@@ -1,0 +1,555 @@
+#+TITLE: Models API
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-models :display text/plain
+
+#+BEGIN_SRC jupyter-python :results none
+  import os
+  from openai import OpenAI
+  client = OpenAI(base_url='https://api.xty.app/v1')
+#+END_SRC
+
+* Models API
+使用 Models API 查看和访问 OpenAI 提供的预训练大语言模型
+
+** List Models
+列出当前可用的模型，并提供每个模型的基本信息，如所有者和可用性。
+
+#+begin_src jupyter-python :results none
+  models = client.models.list()
+#+end_src
+
+#+begin_src jupyter-python :results raw
+  models
+#+end_src
+
+#+RESULTS:
+: SyncPage[Model](data=[Model(id='babbage-002', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='babbage-002', parent=None), Model(id='claude-3-opus-20240229', created=1626777600, object='model', owned_by='claude', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='claude-3-opus-20240229', parent=None), Model(id='claude-3-sonnet-20240229', created=1626777600, object='model', owned_by='claude', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='claude-3-sonnet-20240229', parent=None), Model(id='dall-e-2', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='dall-e-2', parent=None), Model(id='dall-e-3', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='dall-e-3', parent=None), Model(id='davinci-002', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='davinci-002', parent=None), Model(id='gpt-3.5-turbo', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo', parent=None), Model(id='gpt-3.5-turbo-0125', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo-0125', parent=None), Model(id='gpt-3.5-turbo-0301', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo-0301', parent=None), Model(id='gpt-3.5-turbo-0613', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo-0613', parent=None), Model(id='gpt-3.5-turbo-1106', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo-1106', parent=None), Model(id='gpt-3.5-turbo-16k', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo-16k', parent=None), Model(id='gpt-3.5-turbo-16k-0613', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo-16k-0613', parent=None), Model(id='gpt-3.5-turbo-instruct', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo-instruct', parent=None), Model(id='gpt-4', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4', parent=None), Model(id='gpt-4-0125-preview', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-0125-preview', parent=None), Model(id='gpt-4-0314', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-0314', parent=None), Model(id='gpt-4-0613', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-0613', parent=None), Model(id='gpt-4-1106-preview', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-1106-preview', parent=None), Model(id='gpt-4-32k', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-32k', parent=None), Model(id='gpt-4-32k-0314', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-32k-0314', parent=None), Model(id='gpt-4-32k-0613', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-32k-0613', parent=None), Model(id='gpt-4-turbo-preview', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-turbo-preview', parent=None), Model(id='gpt-4-vision-preview', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-vision-preview', parent=None), Model(id='text-ada-001', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-ada-001', parent=None), Model(id='text-babbage-001', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-babbage-001', parent=None), Model(id='text-curie-001', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-curie-001', parent=None), Model(id='text-davinci-002', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-davinci-002', parent=None), Model(id='text-davinci-003', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-davinci-003', parent=None), Model(id='text-davinci-edit-001', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-davinci-edit-001', parent=None), Model(id='text-embedding-3-large', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-embedding-3-large', parent=None), Model(id='text-embedding-3-small', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-embedding-3-small', parent=None), Model(id='text-embedding-ada-002', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-embedding-ada-002', parent=None), Model(id='text-embedding-v1', created=1626777600, object='model', owned_by='ali', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-embedding-v1', parent=None), Model(id='text-moderation-latest', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-moderation-latest', parent=None), Model(id='text-moderation-stable', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='text-moderation-stable', parent=None), Model(id='tts-1', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='tts-1', parent=None), Model(id='tts-1-1106', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='tts-1-1106', parent=None), Model(id='tts-1-hd', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='tts-1-hd', parent=None), Model(id='tts-1-hd-1106', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='tts-1-hd-1106', parent=None), Model(id='whisper-1', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='whisper-1', parent=None)], object='list')
+
+**** 查看 OpenAI 最新提供的模型 API 信息
+=models.data=: 目前OpenAI提供的大语言模型列表，列表中的每一项都对应着一个模型实例。
+
+以=GPT-3.5-Turbo=模型为例，解释说明各项参数：
+1. =created=: 这是模型创建的时间戳，单位为 Unix 时间戳（自1970年1月1日（00:00:00 GMT）以后的秒数）。
+2. =id=: 这是模型的唯一标识符。在这个例子中，模型的 ID 是 "text-davinci-003"。
+3. =object=: 这个字段表示的是当前对象的类型，在这个例子中，对象是 "model"，说明这个 JSON 对象是一个模型。
+4. =owned_by=: 这个字段表示的是模型的所有者，在这个例子中，模型的所有者是 "openai-internal"。
+
+#+begin_src jupyter-python :results raw
+  models.data
+#+end_src
+
+#+RESULTS:
+| Model | (id= babbage-002 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= babbage-002 parent=None) | Model | (id= claude-3-opus-20240229 created=1626777600 object= model owned_by= claude permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= claude-3-opus-20240229 parent=None) | Model | (id= claude-3-sonnet-20240229 created=1626777600 object= model owned_by= claude permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= claude-3-sonnet-20240229 parent=None) | Model | (id= dall-e-2 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= dall-e-2 parent=None) | Model | (id= dall-e-3 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= dall-e-3 parent=None) | Model | (id= davinci-002 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= davinci-002 parent=None) | Model | (id= gpt-3.5-turbo created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo parent=None) | Model | (id= gpt-3.5-turbo-0125 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo-0125 parent=None) | Model | (id= gpt-3.5-turbo-0301 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo-0301 parent=None) | Model | (id= gpt-3.5-turbo-0613 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo-0613 parent=None) | Model | (id= gpt-3.5-turbo-1106 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo-1106 parent=None) | Model | (id= gpt-3.5-turbo-16k created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo-16k parent=None) | Model | (id= gpt-3.5-turbo-16k-0613 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo-16k-0613 parent=None) | Model | (id= gpt-3.5-turbo-instruct created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-3.5-turbo-instruct parent=None) | Model | (id= gpt-4 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4 parent=None) | Model | (id= gpt-4-0125-preview created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-0125-preview parent=None) | Model | (id= gpt-4-0314 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-0314 parent=None) | Model | (id= gpt-4-0613 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-0613 parent=None) | Model | (id= gpt-4-1106-preview created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-1106-preview parent=None) | Model | (id= gpt-4-32k created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-32k parent=None) | Model | (id= gpt-4-32k-0314 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-32k-0314 parent=None) | Model | (id= gpt-4-32k-0613 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-32k-0613 parent=None) | Model | (id= gpt-4-turbo-preview created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-turbo-preview parent=None) | Model | (id= gpt-4-vision-preview created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= gpt-4-vision-preview parent=None) | Model | (id= text-ada-001 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-ada-001 parent=None) | Model | (id= text-babbage-001 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-babbage-001 parent=None) | Model | (id= text-curie-001 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-curie-001 parent=None) | Model | (id= text-davinci-002 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-davinci-002 parent=None) | Model | (id= text-davinci-003 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-davinci-003 parent=None) | Model | (id= text-davinci-edit-001 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-davinci-edit-001 parent=None) | Model | (id= text-embedding-3-large created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-embedding-3-large parent=None) | Model | (id= text-embedding-3-small created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-embedding-3-small parent=None) | Model | (id= text-embedding-ada-002 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-embedding-ada-002 parent=None) | Model | (id= text-embedding-v1 created=1626777600 object= model owned_by= ali permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-embedding-v1 parent=None) | Model | (id= text-moderation-latest created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-moderation-latest parent=None) | Model | (id= text-moderation-stable created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= text-moderation-stable parent=None) | Model | (id= tts-1 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= tts-1 parent=None) | Model | (id= tts-1-1106 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= tts-1-1106 parent=None) | Model | (id= tts-1-hd created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= tts-1-hd parent=None) | Model | (id= tts-1-hd-1106 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= tts-1-hd-1106 parent=None) | Model | (id= whisper-1 created=1626777600 object= model owned_by= openai permission= ((id : modelperm-LwHkVFn8AcMItP432fKKDIKJ object : model_permission created : 1626777600 allow_create_engine : True allow_sampling : True allow_logprobs : True allow_search_indices : False allow_view : True allow_fine_tuning : False organization : * group : None is_blocking : False)) root= whisper-1 parent=None) |
+
+*** 获取模型 ID 列表
+#+begin_src jupyter-python
+  models.data[0].id
+#+end_src
+
+#+RESULTS:
+: babbage-002
+#+begin_src jupyter-python :results none
+  model_list = [model.id for model in models.data]
+#+end_src
+
+#+begin_src jupyter-python
+  model_list
+#+end_src
+
+#+RESULTS:
+| babbage-002 | claude-3-opus-20240229 | claude-3-sonnet-20240229 | dall-e-2 | dall-e-3 | davinci-002 | gpt-3.5-turbo | gpt-3.5-turbo-0125 | gpt-3.5-turbo-0301 | gpt-3.5-turbo-0613 | gpt-3.5-turbo-1106 | gpt-3.5-turbo-16k | gpt-3.5-turbo-16k-0613 | gpt-3.5-turbo-instruct | gpt-4 | gpt-4-0125-preview | gpt-4-0314 | gpt-4-0613 | gpt-4-1106-preview | gpt-4-32k | gpt-4-32k-0314 | gpt-4-32k-0613 | gpt-4-turbo-preview | gpt-4-vision-preview | text-ada-001 | text-babbage-001 | text-curie-001 | text-davinci-002 | text-davinci-003 | text-davinci-edit-001 | text-embedding-3-large | text-embedding-3-small | text-embedding-ada-002 | text-embedding-v1 | text-moderation-latest | text-moderation-stable | tts-1 | tts-1-1106 | tts-1-hd | tts-1-hd-1106 | whisper-1 |
+
+#+BEGIN_SRC jupyter-python
+  len(model_list)
+#+END_SRC
+
+#+RESULTS:
+: 41
+
+** Retrieve Model
+根据前面查询到当前支持的模型ID列表，获取指定模型实例，如=gpt-3.5-turbo=。
+
+#+begin_src jupyter-python :results none
+  # 将模型 ID 传入 retrieve 接口
+  gpt_3 = client.models.retrieve("gpt-3.5-turbo")
+#+end_src
+
+#+begin_src jupyter-python :results raw
+  print(gpt_3)
+#+end_src
+
+#+RESULTS:
+: Model(id='gpt-3.5-turbo', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-3.5-turbo', parent=None)
+
+*** 获取指定模型，如 GPT-4V
+
+#+begin_src jupyter-python
+  client.models.retrieve("gpt-4-vision-preview")
+#+end_src
+
+#+RESULTS:
+: Model(id='gpt-4-vision-preview', created=1626777600, object='model', owned_by='openai', permission=[{'id': 'modelperm-LwHkVFn8AcMItP432fKKDIKJ', 'object': 'model_permission', 'created': 1626777600, 'allow_create_engine': True, 'allow_sampling': True, 'allow_logprobs': True, 'allow_search_indices': False, 'allow_view': True, 'allow_fine_tuning': False, 'organization': '*', 'group': None, 'is_blocking': False}], root='gpt-4-vision-preview', parent=None)
+
+* 文本内容补全初探（Completions API）[Legacy]
+使用 Completions API 实现各类文本生成任务
+
+主要请求参数说明：
+
+- =model= :: （string，必填）  要使用的模型的 ID。可以参考 *模型端点兼容性表*。
+- =prompt= :: （string or array，必填，Defaults to ）  生成补全的提示，编码为字符串、字符串数组、token数组或token数组数组。
+  注意，这是模型在训练过程中看到的文档分隔符，所以如果没有指定提示符，模型将像从新文档的开头一样生成。
+- =stream= :: （boolean，选填，默认 false） 当它设置为 true 时，API 会以 SSE（ Server Side Event）方式返回内容，即会不断地输出内容直到完成响应，
+  流通过 =data: [DONE]= 消息终止。
+- =max_tokens= :: （integer，选填，默认是 16） 补全时要生成的最大 token 数。
+  提示 =max_tokens= 的 token 计数不能超过模型的上下文长度。大多数模型的上下文长度为 2048 个token（最新模型除外，它支持 4096）
+- =temperature= :: （number，选填，默认是1） 使用哪个采样温度，在 *0和2之间*。
+  较高的值，如0.8会使输出更随机，而较低的值，如0.2会使其更加集中和确定性。
+  通常建议修改这个（ =temperature= ）或 =top_p= 但两者不能同时存在，二选一。
+- =n= :: （integer，选填，默认为 1） 每个 =prompt= 生成的补全次数。
+  注意：由于此参数会生成许多补全，因此它会快速消耗token配额。小心使用，并确保对 =max_tokens= 和 =stop= 进行合理的设置。
+
+** 生成英文文本
+
+#+begin_src jupyter-python :results none
+  data = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="Say this is a test",
+    max_tokens=7,
+    temperature=0
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  print(data)
+#+end_src
+
+#+RESULTS:
+: Completion(id='cmpl-3qHmp7HWcHesxee1kWNsE06nmW3WikR6', choices=[CompletionChoice(finish_reason='stop', index=0, logprobs=None, text='This is a test.')], created=1714807971, model='gpt-3.5-turbo-instruct', object='text_completion', system_fingerprint=None, usage=CompletionUsage(completion_tokens=24, prompt_tokens=5, total_tokens=29))
+
+#+begin_src jupyter-python :results none
+  text = data.choices[0].text
+#+end_src
+
+#+begin_src jupyter-python
+  print(text)
+#+end_src
+
+#+RESULTS:
+: This is a test.
+
+** 生成中文文本
+调整 =max_tokens=
+
+#+begin_src jupyter-python :results none
+  data = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="讲10个给程序员听得笑话",
+    max_tokens=1000,
+    temperature=0.5
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  text = data.choices[0].text
+  print(text)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+  当然！这里有十个程序员笑话：
+
+  1. 为什么程序员总是混在一起？
+     因为他们总是对话框里相见。
+
+  2. 为什么程序员总是迟到？
+     因为他们总是在等待代码合并。
+
+  3. 为什么程序员总是喜欢睡觉？
+     因为他们总是在处理“睡眠模式”。
+
+  4. 为什么程序员不喜欢和别人出去玩？
+     因为他们觉得“外界不安全”。
+
+  5. 为什么程序员总是有那么多键盘？
+     因为他们总是在“键入”新的想法。
+
+  6. 为什么程序员不喜欢阅读小说？
+     因为他们觉得“情节不合逻辑”。
+
+  7. 为什么程序员总是让事情变得复杂？
+     因为他们觉得“简单不够挑战”。
+
+  8. 为什么程序员总是穿着T恤？
+     因为他们觉得“无需正式接口”。
+
+  9. 为什么程序员总是喜欢黑色？
+     因为他们觉得“黑客风格”。
+
+  10. 为什么程序员总是喜欢猫？
+      因为猫总是“喜欢按键盘”。
+
+  希望这些能让你和你的程序员朋友开心起来！
+#+end_example
+
+** 生成 Python 代码，并执行和验证
+以面试中考察的典型的试题 =快速排序= 为例
+
+#+begin_src jupyter-python :results none
+  data = client.completions.create(
+    model="gpt-3.5-turbo-instruct",
+    prompt="生成可执行的快速排序 Python 代码",
+    max_tokens=1000,
+    temperature=0
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  text = data.choices[0].text
+  print(text)
+#+end_src
+
+#+RESULTS:
+#+begin_example
+  下面是一个简单的 Python 实现，用于快速排序算法：
+
+  ```python
+  def quick_sort(arr):
+      if len(arr) <= 1:
+          return arr
+      else:
+          pivot = arr[0]
+          less_than_pivot = [x for x in arr[1:] if x <= pivot]
+          greater_than_pivot = [x for x in arr[1:] if x > pivot]
+          return quick_sort(less_than_pivot) + [pivot] + quick_sort(greater_than_pivot)
+
+  if __name__ == "__main__":
+      arr = [3, 6, 8, 10, 1, 2, 1]
+      sorted_arr = quick_sort(arr)
+      print("Sorted array:", sorted_arr)
+  ```
+
+  要运行此代码，只需将其保存为 `.py` 文件并在 Python 解释器中运行即可。
+#+end_example
+
+**** Prompt：Jupyter Notebook 中执行生成的代码
+Prompt：
+
+#+begin_example
+我现在用 Completion API 生成了 Python 代码，并以字符串形式存放在 text 中，如下所示：
+
+text = data.choices[0].text
+print(text)
+
+def quick_sort(arr):
+    if len(arr) <= 1:
+        return arr
+    pivot = arr[0]
+    left = [x for x in arr[1:] if x <= pivot]
+    right = [x for x in arr[1:] if x > pivot]
+    return quick_sort(left) + [pivot] + quick_sort(right)
+
+如何在 Jupyter notebook 中执行text中存放的这段代码
+#+end_example
+
+#+begin_src jupyter-python
+  # `exec` 函数会执行传入的字符串作为 Python 代码。
+  # 在这个例子中，我们使用 `exec` 来定义了一个 `quick_sort` 函数，然后你就可以调用这个函数了。
+  # 请注意，`exec` 可以执行任何 Python 代码，因此在使用它的时候一定要小心，特别是当你执行的代码来自不可信的来源时。
+  exec(text)
+#+end_src
+
+#+begin_src jupyter-python
+  # 现在你可以调用这个函数了
+  print(quick_sort([12,3,6,8,10,1,2,1]))
+#+end_src
+
+#+begin_example
+  [1, 1, 2, 3, 6, 8, 10, 12]
+#+end_example
+
+* 聊天机器人初探（Chat Completions API）
+使用 Chat Completions API 实现对话任务
+
+聊天补全(Chat Completions API)以消息列表作为输入，并返回模型生成的消息作为输出。
+尽管聊天格式旨在使多轮对话变得简单，但它同样适用于没有任何对话的单轮任务。
+
+主要请求参数说明：
+
+- =model= :: （string，必填）
+  要使用的模型ID。有关哪些模型适用于Chat API的详细信息
+- =messages= :: （array，必填）
+  迄今为止描述对话的消息列表
+  - =role= :: （string，必填）
+    发送此消息的角色。 =system= 、 =user= 或 =assistant= 之一（一般用 user发送用户问题，system 发送给模型提示信息）
+  - =content= :: （string，必填）
+     消息的内容
+  - =name= :: （string，选填）
+    此消息的发送者姓名。可以包含 a-z、A-Z、0-9 和下划线，最大长度为 64 个字符
+- =stream= :: （boolean，选填，是否按流的方式发送内容）
+  当它设置为 true 时，API 会以 SSE（ Server Side Event）方式返回内容。
+  SSE 本质上是一个长链接，会持续不断地输出内容直到完成响应。如果不是做实时聊天，默认false即可。
+- =max_tokens= :: （integer，选填）
+  在聊天补全中生成的最大 *tokens* 数。输入token和生成的token的总长度受模型上下文长度的限制。
+- =temperature= :: （number，选填，默认是 1）
+  采样温度，在 0和 2 之间。较高的值，如0.8会使输出更随机，而较低的值，如0.2会使其更加集中和确定性。
+  通常建议修改这个（ =temperature= ）或者 =top_p= ，但两者不能同时存在，二选一。
+
+** 开启聊天模式
+使用 =messages= 记录迄今为止对话的消息列表
+
+#+begin_src jupyter-python :results none
+  messages=[
+      {
+          "role": "user", 
+          "content": "Hello!"
+      }
+  ]
+
+  data = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages = messages
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  print(data)
+#+end_src
+
+#+RESULTS:
+: ChatCompletion(id='chatcmpl-8mIw0R0weeKL5eBdpUsqfTpz9qrVEAIk', choices=[Choice(finish_reason='stop', index=0, logprobs=None, message=ChatCompletionMessage(content='Hi there! How can I assist you today?', role='assistant', function_call=None, tool_calls=None))], created=1714809219, model='gpt-3.5-turbo-0613', object='chat.completion', system_fingerprint='fp_4f0b692a78', usage=CompletionUsage(completion_tokens=17, prompt_tokens=9, total_tokens=26))
+
+#+begin_src jupyter-python
+  # 从返回的数据中获取生成的消息
+  new_message = data.choices[0].message
+  # 打印 new_message
+  print(new_message)
+#+end_src
+
+#+RESULTS:
+: ChatCompletionMessage(content='Hi there! How can I assist you today?', role='assistant', function_call=None, tool_calls=None)
+
+#+begin_src jupyter-python
+  # 将消息追加到 messages 列表中
+  messages.append(new_message)
+  print(messages)
+#+end_src
+
+#+RESULTS:
+: [{'role': 'user', 'content': 'Hello!'}, ChatCompletionMessage(content='Hi there! How can I assist you today?', role='assistant', function_call=None, tool_calls=None)]
+
+#+begin_src jupyter-python
+  type(new_message)
+#+end_src
+
+#+RESULTS:
+: openai.types.chat.chat_completion_message.ChatCompletionMessage
+#+begin_src jupyter-python
+  new_message.role
+#+end_src
+
+#+RESULTS:
+: assistant
+#+begin_src jupyter-python
+  new_message.content
+#+end_src
+
+#+RESULTS:
+: Hi there! How can I assist you today?
+#+begin_src jupyter-python
+  messages.pop()
+#+end_src
+
+#+RESULTS:
+: ChatCompletionMessage(content='Hi there! How can I assist you today?', role='assistant', function_call=None, tool_calls=None)
+#+begin_src jupyter-python
+  print(messages)
+#+end_src
+
+#+RESULTS:
+: [{'role': 'user', 'content': 'Hello!'}]
+
+**** Prompt: OpenAIObject -> Dict
+#+begin_example
+打印 messages 列表后发现数据类型不对，messages 输出如下：
+
+print(messages)
+
+[{'role': 'user', 'content': 'Hello!'}, <OpenAIObject at 0x7f27582c13f0> JSON: {
+  "content": "Hello! How can I assist you today?",
+  "role": "assistant"
+}]
+
+将OpenAIObject 转换为一个如下数据类型格式：
+
+    {
+        "role": "user", 
+        "content": "Hello!"
+    }
+#+end_example
+
+#+begin_src jupyter-python
+  new_message = data.choices[0].message
+  new_message_dict = {"role": new_message.role, "content": new_message.content}
+  type(new_message_dict)
+#+end_src
+
+#+RESULTS:
+: dict
+#+begin_src jupyter-python
+  print(new_message_dict)
+#+end_src
+
+#+RESULTS:
+: {'role': 'assistant', 'content': 'Hi there! How can I assist you today?'}
+
+#+begin_src jupyter-python :results none
+  # 将消息追加到 messages 列表中
+  messages.append(new_message_dict)
+#+end_src
+
+#+begin_src jupyter-python
+  print(messages)
+#+end_src
+
+#+RESULTS:
+: [{'role': 'user', 'content': 'Hello!'}, {'role': 'assistant', 'content': 'Hi there! How can I assist you today?'}]
+
+**** 新一轮对话
+
+#+begin_src jupyter-python :results none
+  new_chat = {
+      "role": "user",
+      "content": "1.讲一个程序员才听得懂的冷笑话；2.今天是几号？3.明天星期几？"
+  }
+#+end_src
+
+#+begin_src jupyter-python :results none
+  messages.append(new_chat)
+#+end_src
+
+#+begin_src jupyter-python
+  from pprint import pprint
+
+  pprint(messages)
+#+end_src
+
+#+RESULTS:
+: [{'content': 'Hello!', 'role': 'user'},
+:  {'content': 'Hi there! How can I assist you today?', 'role': 'assistant'},
+:  {'content': '1.讲一个程序员才听得懂的冷笑话；2.今天是几号？3.明天星期几？', 'role': 'user'}]
+
+#+begin_src jupyter-python :results none
+  data = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=messages
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  new_message = data.choices[0].message
+  # 打印 new_messages 
+  print(new_message)
+#+end_src
+
+#+RESULTS:
+: ChatCompletionMessage(content='1. 冷笑话：为什么程序员喜欢在海滩上散步？因为他们需要一些SUN（指Java编程语言中的"SUN"）。\n\n2. 根据我的时区信息，今天是{{date}}。\n\n3. 明天是{{weekday}}。请问您需要确定具体的日期吗？', role='assistant', function_call=None, tool_calls=None)
+
+#+begin_src jupyter-python
+  # 打印 new_messages 内容
+  print(new_message.content)
+#+end_src
+
+#+RESULTS:
+: 1. 冷笑话：为什么程序员喜欢在海滩上散步？因为他们需要一些SUN（指Java编程语言中的"SUN"）。
+: 
+: 2. 根据我的时区信息，今天是{{date}}。
+: 
+: 3. 明天是{{weekday}}。请问您需要确定具体的日期吗？
+
+** 使用多种身份聊天对话
+目前=role=参数支持3类身份： =system=, =user= =assistant=:
+
+#+ATTR_ORG: :width 800
+[[file:images/chat_completion_api.png]]
+
+#+begin_src jupyter-python :results none
+  # 构造聊天记录
+  messages=[
+      {"role": "system", "content": "你是一个乐于助人的体育界专家。"},
+      {"role": "user", "content": "2008年奥运会是在哪里举行的？"},
+  ]
+#+end_src
+
+#+begin_src jupyter-python :results none
+  data = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=messages
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  message = data.choices[0].message.content
+  print(message)
+#+end_src
+
+#+RESULTS:
+: 2008年奥运会在中国的北京市举行。
+
+#+begin_src jupyter-python :results none
+  # 添加 GPT 返回结果到聊天记录
+  messages.append({"role": "assistant", "content": message})
+#+end_src
+
+#+begin_src jupyter-python
+  messages
+#+end_src
+
+#+RESULTS:
+| role | : | system    | content | : | 你是一个乐于助人的体育界专家。   |
+| role | : | user      | content | : | 2008年奥运会是在哪里举行的？     |
+| role | : | assistant | content | : | 2008年奥运会在中国的北京市举行。 |
+#+begin_src jupyter-python :results none
+  # 第二轮对话
+  messages.append({"role": "user", "content": "1.金牌最多的是哪个国家？2.奖牌最多的是哪个国家？"})
+#+end_src
+
+#+begin_src jupyter-python
+  messages
+#+end_src
+
+#+RESULTS:
+| role | : | system    | content | : | 你是一个乐于助人的体育界专家。                   |
+| role | : | user      | content | : | 2008年奥运会是在哪里举行的？                     |
+| role | : | assistant | content | : | 2008年奥运会在中国的北京市举行。                 |
+| role | : | user      | content | : | 1.金牌最多的是哪个国家？2.奖牌最多的是哪个国家？ |
+
+#+begin_src jupyter-python :results none
+data = client.chat.completions.create(
+  model="gpt-3.5-turbo",
+  messages=messages
+)
+#+end_src
+
+#+begin_src jupyter-python
+  message = data.choices[0].message.content
+  print(message)
+#+end_src
+
+#+begin_example
+1. 2008年夏季奥运会中，金牌最多的国家是中国，共获得51枚金牌。
+2. 2008年夏季奥运会中，奖牌最多的国家是中国，共获得100枚奖牌（51枚金牌、21枚银牌、28枚铜牌）。
+#+end_example
+
+#+begin_src jupyter-python :results none
+  data = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{'role': 'user', 'content': '1.金牌最多的是哪个国家？2.奖牌最多的是哪个国家？'}]
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  data.choices[0].message.content
+#+end_src
+
+#+RESULTS:
+: 1. 截至2021年奥运会，金牌最多的国家是美国。\n2. 截至2021年奥运会，奖牌最多的国家是美国。

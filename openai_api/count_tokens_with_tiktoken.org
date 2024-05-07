@@ -1,0 +1,373 @@
+#+TITLE: 使用 tiktoken 计算 token 数量
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-ticktoken :display text/plain
+
+[[https://github.com/openai/tiktoken/blob/main/README.md][=tiktoken=]] 是OpenAI开发的一种BPE分词器。
+
+给定一段文本字符串（例如， ~"tiktoken is great!"~ ）和一种编码方式（例如， ~"cl100k_base"~ ），
+分词器可以将文本字符串切分成一系列的token（例如，=["t", "ik", "token", " is", " great", "!"]=）。
+
+将文本字符串切分成token非常有用，因为GPT模型看到的文本就是以token的形式呈现的。
+知道一段文本字符串中有多少个token可以告诉你
+（a）这个字符串是否对于文本模型来说太长了而无法处理，以及
+（b）一个OpenAI API调用的费用是多少（因为使用量是按照token计价的）。
+
+* 编码方式
+编码方式规定了如何将文本转换成token。不同的模型使用不同的编码方式。
+
+=tiktoken= 支持OpenAI模型使用的三种编码方式：
+
+| 编码名称                | OpenAI模型                                            |
+|-------------------------+-------------------------------------------------------|
+| =cl100k_base=           | =gpt-4= ,  =gpt-3.5-turbo= , =text-embedding-ada-002= |
+| =p50k_base=             | Codex模型, =text-davinci-002= , =text-davinci-003=    |
+| =r50k_base= (或 =gpt2=) | 像 =davinci= 这样的GPT-3模型                          |
+
+你可以使用 =tiktoken.encoding_for_model()= 获取一个模型的编码方式，如下所示：
+
+#+begin_src python
+  encoding = tiktoken.encoding_for_model('gpt-3.5-turbo')
+#+end_src
+
+注意， =p50k_base= 与 =r50k_base= 有很大的重叠，对于非代码应用，它们通常会产生相同的token。
+
+* 不同语言的分词器库
+对于 =cl100k_base= 和 =p50k_base= 编码方式：
+
+- Python:
+  [[https://github.com/openai/tiktoken/blob/main/README.md][tiktoken]]
+- .NET / C#:
+  [[https://github.com/dmitry-brazhenko/SharpToken][SharpToken]],
+  [[https://github.com/aiqinxuancai/TiktokenSharp][TiktokenSharp]]
+- Java: [[https://github.com/knuddelsgmbh/jtokkit][jtokkit]]
+
+对于 =r50k_base= (=gpt2=) 编码方式，许多语言都提供了分词器。
+
+- Python: [[https://github.com/openai/tiktoken/blob/main/README.md][tiktoken]] (或者另选[[https://huggingface.co/docs/transformers/model_doc/gpt2#transformers.GPT2TokenizerFast][GPT2TokenizerFast]])
+- JavaScript: [[https://www.npmjs.com/package/gpt-3-encoder][gpt-3-encoder]]
+- .NET / C#: [[https://github.com/dluc/openai-tools][GPT Tokenizer]]
+- Java: [[https://github.com/hyunwoongko/gpt2-tokenizer-java][gpt2-tokenizer-java]]
+- PHP: [[https://github.com/CodeRevolutionPlugins/GPT-3-Encoder-PHP][GPT-3-Encoder-PHP]]
+
+（OpenAI对第三方库不做任何背书或保证。）
+
+* 如何进行通常的分词操作
+在英语中，token的长度通常在一个字符到一个单词之间变化（例如， ="t"= 或 =" great"= ），尽管在某些语言中，token可以比一个字符短或比一个单词长。
+空格通常与单词的开头一起分组（例如， =" is"= 而不是 ="is "= 或 =" "= + ="is"= ）。你可以快速在 [[https://beta.openai.com/tokenizer][OpenAI分词器]] 检查一段字符串如何被分词。
+
+* 0. 安装 =tiktoken=
+
+#+begin_src jupyter-python :eval no
+  pip install --upgrade tiktoken
+#+end_src
+
+* 1. Import =tiktoken=
+
+#+begin_src jupyter-python :results none
+  import tiktoken
+#+end_src
+
+* 2. Load an encoding
+使用 =tiktoken.get_encoding()= 按名称加载编码。
+
+第一次运行时，它将需要互联网连接进行下载。后续运行不需要互联网连接。
+
+#+begin_src jupyter-python :results none
+  encoding = tiktoken.get_encoding("cl100k_base")
+#+end_src
+
+使用 =tiktoken.encoding_for_model()= 函数可以自动加载给定模型名称的正确编码。
+
+#+begin_src jupyter-python :results none
+  encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+#+end_src
+
+* 3. Turn text into tokens with =encoding.encode()=
+
+The =.encode()= method converts a text string into a list of token integers.
+
+#+begin_src jupyter-python
+  encoding.encode("tiktoken is great!")
+#+end_src
+
+#+RESULTS:
+| 83 | 1609 | 5963 | 374 | 2294 | 0 |
+
+通过计算 =.encode()= 返回的列表的长度来统计token数量。
+
+#+begin_src jupyter-python :results none
+  def num_tokens_from_string(string: str, encoding_name: str) -> int:
+      """返回文本字符串中的Token数量"""
+      encoding = tiktoken.get_encoding(encoding_name)
+      num_tokens = len(encoding.encode(string))
+      return num_tokens
+#+end_src
+
+#+begin_src jupyter-python
+  num_tokens_from_string("tiktoken is great!", "cl100k_base")
+#+end_src
+
+#+RESULTS:
+: 6
+
+* 4. Turn tokens into text with =encoding.decode()=
+
+=.decode()= 将一个token整数列表转换为字符串。
+
+#+begin_src jupyter-python
+  encoding.decode([83, 1609, 5963, 374, 2294, 0])
+#+end_src
+
+#+RESULTS:
+: tiktoken is great!
+
+#+begin_src jupyter-python
+  encoding.decode([0,1,2,3])
+#+end_src
+
+#+RESULTS:
+: !"#$
+
+*注意：尽管=.decode()=可以应用于单个token，但对于不在 utf-8 边界上的token来说，解码可能会有损失或错误。*
+
+对于单个token， =.decode_single_token_bytes()= 安全地将单个整数token转换为其表示的字节。
+
+#+begin_src jupyter-python
+  [encoding.decode_single_token_bytes(token) for token in [83, 1609, 5963, 374, 2294, 0]]
+#+end_src
+
+#+RESULTS:
+: [b't', b'ik', b'token', b' is', b' great', b'!']
+
+（在字符串前面的 =b= 表示这些字符串是字节字符串。）
+
+* 5. Comparing encodings
+不同的编码方式在分割单词、处理空格和非英文字符方面存在差异。通过上述方法，我们可以比较几个示例字符串在不同的编码方式下的表现。
+
+#+begin_src jupyter-python :results none
+  def compare_encodings(example_string: str) -> None:
+      """Prints a comparison of three string encodings."""
+      # print the example string
+      print(f'\nExample string: "{example_string}"')
+      # for each encoding, print the # of tokens, the token integers, and the token bytes
+      for encoding_name in ["gpt2", "p50k_base", "cl100k_base"]:
+          encoding = tiktoken.get_encoding(encoding_name)
+          token_integers = encoding.encode(example_string)
+          num_tokens = len(token_integers)
+          token_bytes = [encoding.decode_single_token_bytes(token) for token in token_integers]
+          print()
+          print(f"{encoding_name}: {num_tokens} tokens")
+          print(f"token integers: {token_integers}")
+          print(f"token bytes: {token_bytes}")
+        
+#+end_src
+
+#+begin_src jupyter-python
+  compare_encodings("antidisestablishmentarianism")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+  Example string: "antidisestablishmentarianism"
+
+  gpt2: 5 tokens
+  token integers: [415, 29207, 44390, 3699, 1042]
+  token bytes: [b'ant', b'idis', b'establishment', b'arian', b'ism']
+
+  p50k_base: 5 tokens
+  token integers: [415, 29207, 44390, 3699, 1042]
+  token bytes: [b'ant', b'idis', b'establishment', b'arian', b'ism']
+
+  cl100k_base: 6 tokens
+  token integers: [519, 85342, 34500, 479, 8997, 2191]
+  token bytes: [b'ant', b'idis', b'establish', b'ment', b'arian', b'ism']
+#+end_example
+
+#+begin_src jupyter-python
+  compare_encodings("2 + 2 = 4")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+  Example string: "2 + 2 = 4"
+
+  gpt2: 5 tokens
+  token integers: [17, 1343, 362, 796, 604]
+  token bytes: [b'2', b' +', b' 2', b' =', b' 4']
+
+  p50k_base: 5 tokens
+  token integers: [17, 1343, 362, 796, 604]
+  token bytes: [b'2', b' +', b' 2', b' =', b' 4']
+
+  cl100k_base: 7 tokens
+  token integers: [17, 489, 220, 17, 284, 220, 19]
+  token bytes: [b'2', b' +', b' ', b'2', b' =', b' ', b'4']
+#+end_example
+
+#+begin_src jupyter-python
+  compare_encodings("お誕生日おめでとう")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+  Example string: "お誕生日おめでとう"
+
+  gpt2: 14 tokens
+  token integers: [2515, 232, 45739, 243, 37955, 33768, 98, 2515, 232, 1792, 223, 30640, 30201, 29557]
+  token bytes: [b'\xe3\x81', b'\x8a', b'\xe8\xaa', b'\x95', b'\xe7\x94\x9f', b'\xe6\x97', b'\xa5', b'\xe3\x81', b'\x8a', b'\xe3\x82', b'\x81', b'\xe3\x81\xa7', b'\xe3\x81\xa8', b'\xe3\x81\x86']
+
+  p50k_base: 14 tokens
+  token integers: [2515, 232, 45739, 243, 37955, 33768, 98, 2515, 232, 1792, 223, 30640, 30201, 29557]
+  token bytes: [b'\xe3\x81', b'\x8a', b'\xe8\xaa', b'\x95', b'\xe7\x94\x9f', b'\xe6\x97', b'\xa5', b'\xe3\x81', b'\x8a', b'\xe3\x82', b'\x81', b'\xe3\x81\xa7', b'\xe3\x81\xa8', b'\xe3\x81\x86']
+
+  cl100k_base: 9 tokens
+  token integers: [33334, 45918, 243, 21990, 9080, 33334, 62004, 16556, 78699]
+  token bytes: [b'\xe3\x81\x8a', b'\xe8\xaa', b'\x95', b'\xe7\x94\x9f', b'\xe6\x97\xa5', b'\xe3\x81\x8a', b'\xe3\x82\x81', b'\xe3\x81\xa7', b'\xe3\x81\xa8\xe3\x81\x86']
+#+end_example
+
+* 6. Counting tokens for chat completions API calls
+ChatGPT模型，如gpt-3.5-turbo和gpt-4，与旧的完成模型一样使用token，但由于其基于消息的格式，很难准确计算对话中将使用多少个token。
+
+下面是一个示例函数，用于计算传递给gpt-3.5-turbo或gpt-4的消息中的token数量。
+
+请注意，从消息中计算token的确切方式可能因模型而异。请将下面函数中的计数视为估计值，并非永恒保证。
+
+特别地，在使用可选功能输入(input)的请求上方会消耗额外的token。
+
+#+begin_src jupyter-python :results none
+  # 定义函数 num_tokens_from_messages，该函数返回由一组消息所使用的token数。
+  def num_tokens_from_messages(messages, model="gpt-3.5-turbo"):
+      """Return the number of tokens used by a list of messages."""
+      # 尝试获取模型的编码
+      try:
+          encoding = tiktoken.encoding_for_model(model)
+      except KeyError:
+          # 如果模型没有找到，使用 cl100k_base 编码并给出警告
+          print("Warning: model not found. Using cl100k_base encoding.")
+          encoding = tiktoken.get_encoding("cl100k_base")
+      # 针对不同的模型设置token数量
+      if model in {
+          "gpt-3.5-turbo-0613",
+          "gpt-3.5-turbo-16k-0613",
+          "gpt-4-0314",
+          "gpt-4-32k-0314",
+          "gpt-4-0613",
+          "gpt-4-32k-0613",
+          }:
+          tokens_per_message = 3
+          tokens_per_name = 1
+      elif model == "gpt-3.5-turbo-0301":
+          tokens_per_message = 4  # 每条消息遵循 {role/name}\n{content}\n 格式
+          tokens_per_name = -1  # 如果有名字，角色会被省略
+      elif "gpt-3.5-turbo" in model:
+          # 对于 gpt-3.5-turbo 模型可能会有更新，此处返回假设为 gpt-3.5-turbo-0613 的token数量，并给出警告
+          print("Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.")
+          return num_tokens_from_messages(messages, model="gpt-3.5-turbo-0613")
+      elif "gpt-4" in model:
+          # 对于 gpt-4 模型可能会有更新，此处返回假设为 gpt-4-0613 的token数量，并给出警告
+          print("Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.")
+          return num_tokens_from_messages(messages, model="gpt-4-0613")
+      else:
+          # 对于没有实现的模型，抛出未实现错误
+          raise NotImplementedError(
+              f"""num_tokens_from_messages() is not implemented for model {model}. See https://github.com/openai/openai-python/blob/main/chatml.md for information on how messages are converted to tokens."""
+          )
+      num_tokens = 0
+      # 计算每条消息的token数
+      for message in messages:
+          num_tokens += tokens_per_message
+          for key, value in message.items():
+              num_tokens += len(encoding.encode(value))
+              if key == "name":
+                  num_tokens += tokens_per_name
+      num_tokens += 3  # 每条回复都以助手为首
+      return num_tokens
+#+end_src
+
+#+begin_src jupyter-python
+  # 让我们验证上面的函数是否与OpenAI API的响应匹配
+
+  # OpenAI Python SDK v1.0 更新后的使用方式
+  from openai import OpenAI
+  client = OpenAI(base_url='https://api.xty.app/v1')
+
+  example_messages = [
+      {
+          "role": "system",
+          "content": "You are a helpful, pattern-following assistant that translates corporate jargon into plain English.",
+      },
+      {
+          "role": "system",
+          "name": "example_user",
+          "content": "New synergies will help drive top-line growth.",
+      },
+      {
+          "role": "system",
+          "name": "example_assistant",
+          "content": "Things working well together will increase revenue.",
+      },
+      {
+          "role": "system",
+          "name": "example_user",
+          "content": "Let's circle back when we have more bandwidth to touch base on opportunities for increased leverage.",
+      },
+      {
+          "role": "system",
+          "name": "example_assistant",
+          "content": "Let's talk later when we're less busy about how to do better.",
+      },
+      {
+          "role": "user",
+          "content": "This late pivot means we don't have time to boil the ocean for the client deliverable.",
+      },
+  ]
+
+  for model in [
+      "gpt-3.5-turbo-0613",
+      "gpt-3.5-turbo",
+      "gpt-4-0613",
+      "gpt-4",
+      ]:
+      print(model)
+      # example token count from the function defined above
+      print(f"{num_tokens_from_messages(example_messages, model)} prompt tokens counted by num_tokens_from_messages().")
+      # example token count from the OpenAI API
+      # OpenAI Python SDK v1.0 更新后的使用方式
+      completion = client.chat.completions.create(
+          model=model,
+          messages=example_messages,
+          temperature=0,
+          max_tokens=1,  # we're only counting input tokens here, so let's not waste tokens on the output
+      )
+      print(f'{completion.usage.prompt_tokens} prompt tokens counted by the OpenAI API.')
+      print()
+#+end_src
+
+#+RESULTS:
+#+begin_example
+  gpt-3.5-turbo-0613
+  129 prompt tokens counted by num_tokens_from_messages().
+  129 prompt tokens counted by the OpenAI API.
+
+  gpt-3.5-turbo
+  Warning: gpt-3.5-turbo may update over time. Returning num tokens assuming gpt-3.5-turbo-0613.
+  129 prompt tokens counted by num_tokens_from_messages().
+  129 prompt tokens counted by the OpenAI API.
+
+  gpt-4-0613
+  129 prompt tokens counted by num_tokens_from_messages().
+  129 prompt tokens counted by the OpenAI API.
+
+  gpt-4
+  Warning: gpt-4 may update over time. Returning num tokens assuming gpt-4-0613.
+  129 prompt tokens counted by num_tokens_from_messages().
+  129 prompt tokens counted by the OpenAI API.
+#+end_example
+
+** 观察输出
+虽然 GPT-3.5 和 GPT-4 使用了不同的训练集，支持不同的上下文长度。
+
+但是他们使用了相同的 Embedding 模型（相同的编码方式），因此分词后，编码完都是 129 个 tokens。
