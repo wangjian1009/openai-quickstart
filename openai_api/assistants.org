@@ -1,0 +1,2451 @@
+#+TITLE: 快速入门 Assistants API
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-assistants :display text/plain
+
+Assistants API 允许您在自己的应用程序中构建人工智能助手。一个助手有其指令，并可以利用模型、工具和知识来回应用户查询。
+
+Assistants API 目前支持三种类型的工具：
+
+- 代码解释器 Code Interpreter
+- 检索 Retrieval
+- 函数调用 Function calling
+
+使用 [[https://platform.openai.com/playground?mode=assistant][Playground]] 可以在线探索和测试 Assistants API 功能。
+
+本入门指南将指导您完成创建和运行使用代码解释器的助手的关键步骤，以下是使用
+Assistants API 标准流程：
+
+1. 通过定义其自定义指令并选择 LLM 来创建一个助手(Assistant)。
+   如果有需求，可以添加文件并启用诸如代码解释器、检索和函数调用等工具。
+2. 当用户开始对话时，创建一个线程(Thread)。
+3. 当用户提问时，向线程添加消息(Messages)。
+4. 通过调用模型和工具在线程上运行助手以生成响应。
+
+[[file:images/diagram-assistant.png]]
+
+| OBJECT    | WHAT IT REPRESENTS                                                                                                             |
+|-----------+--------------------------------------------------------------------------------------------------------------------------------|
+| Assistant | 专为特定目的构建的人工智能，使用 OpenAI 的模型并调用工具                                                                       |
+| Thread    | 助手与用户之间的对话会话。线程存储消息，并自动处理截断，以将内容适应模型的上下文。                                             |
+| Message   | 由助手或用户创建的消息。消息可以包括文本、图片和其他文件。消息以列表形式存储在线程上。                                         |
+| Run       | 在线程上对一个助手的调用。助手利用其配置和线程的消息执行任务，通过调用模型和工具。作为运行的一部分，助手会将消息追加到线程中。 |
+| Run Step  | 助手在运行中采取的详细步骤列表。助手可以在其运行期间调用工具或创建消息。检查运行步骤可以让您深入了解助手如何得出最终结果。     |
+
+* 使用 Assistants 开发数学辅导老师
+在这个示例中，我们正在创建一个数学辅导助手，并启用了代码解释器工具。
+
+** 第一步：创建助手
+#+begin_src jupyter-python :results none
+  import openai  # 导入 openai 库
+  from pprint import pprint  # 导入 pprint 库
+
+  # 从环境变量 OPENAI_API_KEY 中获取 API 密钥
+  client = openai.OpenAI(base_url='https://api.xty.app/v1')
+
+  # 创建一个名为 "Math Tutor" 的助手，它是一个个人数学辅导老师。这个助手能够编写并运行代码来解答数学问题。
+  assistant = client.beta.assistants.create(
+      name="Math Tutor",
+      instructions="You are a personal math tutor. Write and run code to answer math questions.",
+      tools=[{"type": "code_interpreter"}],  # 使用工具：代码解释器
+      model="gpt-4-1106-preview",  # 使用模型： GPT-4
+  )
+#+end_src
+
+** 第二步：创建线程
+一个线程代表用户和一个或多个助手之间的对话。
+
+#+begin_src jupyter-python
+# 创建一个交流线程
+thread = client.beta.threads.create()
+#+end_src
+
+** 第三步：往线程添加消息
+用户或APP创建的消息内容将作为消息对象（Message Object）添加到线程中。
+
+消息可以包含文本和文件，向线程添加的消息数量没有限制 - OpenAI
+会智能地截断任何不适合模型上下文窗口的内容。
+
+#+begin_src jupyter-python
+# 在该线程中创建一条用户消息，并提交一个数学问题：“我需要解方程 `3x + 11 = 14`。你能帮忙吗？”
+message = client.beta.threads.messages.create(
+    thread_id=thread.id,
+    role="user",
+    content="I need to solve the equation `3x + 11 = 14`. Can you help me?",
+)
+#+end_src
+
+** 第四步：调用助手
+一旦所有用户消息都添加到了线程中，你可以使用任何助手运行该线程。
+
+创建一个运行会使用与助手相关的模型和工具来生成响应。这些响应将作为助手消息添加到线程中。
+
+#+begin_src jupyter-python
+# 创建并等待执行流完成，用于处理该线程中的交互和问题解答
+run = client.beta.threads.runs.create_and_poll(
+    thread_id=thread.id,
+    assistant_id=assistant.id,
+    instructions="Please address the user as Jane Doe. The user has a premium account.",  # 以 Jane Doe 称呼用户，并且用户拥有高级账户
+)
+
+print("Run completed with status: " + run.status)  # 打印执行流的完成状态
+
+# 如果执行流状态为 "completed"（已完成），则获取并打印所有消息
+if run.status == "completed":
+    messages = client.beta.threads.messages.list(thread_id=thread.id)
+
+    print("\nMessages:\n")
+    for message in messages:
+        assert message.content[0].type == "text"
+        print(f"Role: {message.role.capitalize()}")  # 角色名称首字母大写
+        print("Message:")
+        print(message.content[0].text.value + "\n")  # 每条消息后添加空行以增加可读性
+#+end_src
+
+#+begin_example
+Run completed with status: completed
+
+Messages:
+
+Role: Assistant
+Message:
+The solution to the equation \(3x + 11 = 14\) is \(x = 1\). If you need additional help with this equation or another one, feel free to ask, Jane.
+
+Role: Assistant
+Message:
+Of course, Jane! To solve the equation \(3x + 11 = 14\), we need to isolate the variable \(x\) on one side of the equation. We can do this by following these steps:
+
+1. Subtract 11 from both sides of the equation to get the term with \(x\) by itself on one side.
+2. Divide both sides of the resulting equation by 3 to solve for \(x\).
+
+Let's do these calculations to find the value of \(x\).
+
+Role: User
+Message:
+I need to solve the equation `3x + 11 = 14`. Can you help me?
+
+#+end_example
+
+<<ea5e1bca-3401-4db8-b3ae-b2797d11680b>>
+** 通过 Assistant ID 删除指定助手
+
+#+begin_src jupyter-python
+# 删除创建的助手
+client.beta.assistants.delete(assistant.id)
+#+end_src
+
+#+RESULTS:
+: AssistantDeleted(id='asst_CmikkRdSAUDlb5dBDqHX57dT', deleted=True, object='assistant.deleted')
+#+begin_src jupyter-python
+#+end_src
+
+** 使用流式输出实现数学辅导老师
+
+#+begin_src jupyter-python
+import openai
+
+# 从环境变量 OPENAI_API_KEY 中获取 API 密钥
+client = openai.OpenAI()
+
+# 创建一个名为 "Math Tutor" 的助手，它是一个个人数学辅导老师。这个助手能够编写并运行代码来解答数学问题。
+assistant = client.beta.assistants.create(
+    name="Math Tutor",
+    instructions="You are a personal math tutor. Write and run code to answer math questions.",
+    tools=[{"type": "code_interpreter"}],  # 工具包括代码解释器
+    model="gpt-4-1106-preview",  # 使用的模型是 GPT-4
+)
+
+# 创建一个交流线程
+thread = client.beta.threads.create()
+
+# 在该线程中创建一条消息，表示用户角色，并提交一个数学问题：“我需要解方程 `3x + 11 = 14`。你能帮忙吗？”
+message = client.beta.threads.messages.create(
+    thread_id=thread.id,
+    role="user",
+    content="I need to solve the equation `3x + 11 = 14`. Can you help me?",
+)
+
+print("starting run stream")  # 打印开始执行流的消息
+
+# 创建一个执行流，用于处理该线程中的交互和问题解答
+stream = client.beta.threads.runs.create(
+    thread_id=thread.id,
+    assistant_id=assistant.id,
+    instructions="Please address the user as Jane Doe. The user has a premium account.",  # 以 Jane Doe 称呼用户，并且用户拥有高级账户
+    stream=True,  # 持续流式传输
+)
+
+# 遍历执行流中的事件，并以 JSON 格式打印它们
+for event in stream:
+    print(event.model_dump_json(indent=2, exclude_unset=True))
+
+# 删除创建的助手
+client.beta.assistants.delete(assistant.id)
+#+end_src
+
+#+begin_example
+starting run stream
+{
+  "data": {
+    "id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": null,
+    "created_at": 1713409009,
+    "expires_at": 1713409609,
+    "failed_at": null,
+    "file_ids": [],
+    "incomplete_details": null,
+    "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+    "last_error": null,
+    "max_completion_tokens": null,
+    "max_prompt_tokens": null,
+    "metadata": {},
+    "model": "gpt-4-1106-preview",
+    "object": "thread.run",
+    "required_action": null,
+    "response_format": "auto",
+    "started_at": null,
+    "status": "queued",
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "type": "code_interpreter"
+      }
+    ],
+    "truncation_strategy": {
+      "type": "auto",
+      "last_messages": null
+    },
+    "usage": null,
+    "temperature": 1.0,
+    "top_p": 1.0
+  },
+  "event": "thread.run.created"
+}
+{
+  "data": {
+    "id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": null,
+    "created_at": 1713409009,
+    "expires_at": 1713409609,
+    "failed_at": null,
+    "file_ids": [],
+    "incomplete_details": null,
+    "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+    "last_error": null,
+    "max_completion_tokens": null,
+    "max_prompt_tokens": null,
+    "metadata": {},
+    "model": "gpt-4-1106-preview",
+    "object": "thread.run",
+    "required_action": null,
+    "response_format": "auto",
+    "started_at": null,
+    "status": "queued",
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "type": "code_interpreter"
+      }
+    ],
+    "truncation_strategy": {
+      "type": "auto",
+      "last_messages": null
+    },
+    "usage": null,
+    "temperature": 1.0,
+    "top_p": 1.0
+  },
+  "event": "thread.run.queued"
+}
+{
+  "data": {
+    "id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": null,
+    "created_at": 1713409009,
+    "expires_at": 1713409609,
+    "failed_at": null,
+    "file_ids": [],
+    "incomplete_details": null,
+    "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+    "last_error": null,
+    "max_completion_tokens": null,
+    "max_prompt_tokens": null,
+    "metadata": {},
+    "model": "gpt-4-1106-preview",
+    "object": "thread.run",
+    "required_action": null,
+    "response_format": "auto",
+    "started_at": 1713409009,
+    "status": "in_progress",
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "type": "code_interpreter"
+      }
+    ],
+    "truncation_strategy": {
+      "type": "auto",
+      "last_messages": null
+    },
+    "usage": null,
+    "temperature": 1.0,
+    "top_p": 1.0
+  },
+  "event": "thread.run.in_progress"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": null,
+    "created_at": 1713409010,
+    "failed_at": null,
+    "last_error": null,
+    "object": "thread.run.step",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "in_progress",
+    "step_details": {
+      "tool_calls": [],
+      "type": "tool_calls"
+    },
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "type": "tool_calls",
+    "usage": null,
+    "expires_at": 1713409609
+  },
+  "event": "thread.run.step.created"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": null,
+    "created_at": 1713409010,
+    "failed_at": null,
+    "last_error": null,
+    "object": "thread.run.step",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "in_progress",
+    "step_details": {
+      "tool_calls": [],
+      "type": "tool_calls"
+    },
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "type": "tool_calls",
+    "usage": null,
+    "expires_at": 1713409609
+  },
+  "event": "thread.run.step.in_progress"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "id": "call_vdwhimGePmlfb1DK1OAUphNJ",
+            "code_interpreter": {
+              "input": "",
+              "outputs": []
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "from"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " symp"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "y"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " import"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " symbols"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": ","
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " Eq"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": ","
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " solve"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "\n\n"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "#"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " Define"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " the"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " variable"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "\n"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "x"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " ="
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " symbols"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "('"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "x"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "')\n"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "#"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " Define"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " the"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " equation"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "\n"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "equ"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "ation"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " ="
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " Eq"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "("
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "3"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "*x"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " +"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " "
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "11"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": ","
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " "
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "14"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": ")\n\n"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "#"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " Solve"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " the"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " equation"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "\n"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "solution"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " ="
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " solve"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "(e"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "qu"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "ation"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": ","
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": " x"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": ")\n"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "input": "solution"
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "delta": {
+      "step_details": {
+        "type": "tool_calls",
+        "tool_calls": [
+          {
+            "index": 0,
+            "type": "code_interpreter",
+            "code_interpreter": {
+              "outputs": [
+                {
+                  "index": 0,
+                  "type": "logs",
+                  "logs": "[1]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "object": "thread.run.step.delta"
+  },
+  "event": "thread.run.step.delta"
+}
+{
+  "data": {
+    "id": "step_LpKt9GQgocEbEi1SwS19xR25",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": 1713409022,
+    "created_at": 1713409010,
+    "failed_at": null,
+    "last_error": null,
+    "object": "thread.run.step",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "completed",
+    "step_details": {
+      "tool_calls": [
+        {
+          "id": "call_vdwhimGePmlfb1DK1OAUphNJ",
+          "code_interpreter": {
+            "input": "from sympy import symbols, Eq, solve\n\n# Define the variable\nx = symbols('x')\n# Define the equation\nequation = Eq(3*x + 11, 14)\n\n# Solve the equation\nsolution = solve(equation, x)\nsolution",
+            "outputs": [
+              {
+                "logs": "[1]",
+                "type": "logs"
+              }
+            ]
+          },
+          "type": "code_interpreter"
+        }
+      ],
+      "type": "tool_calls"
+    },
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "type": "tool_calls",
+    "usage": {
+      "completion_tokens": 61,
+      "prompt_tokens": 145,
+      "total_tokens": 206
+    },
+    "expires_at": 1713409609
+  },
+  "event": "thread.run.step.completed"
+}
+{
+  "data": {
+    "id": "step_GyvUWdWillIPmUuJxi2QBym5",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": null,
+    "created_at": 1713409022,
+    "failed_at": null,
+    "last_error": null,
+    "object": "thread.run.step",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "in_progress",
+    "step_details": {
+      "message_creation": {
+        "message_id": "msg_otk4PqGWeK4ciIT5qiWrgC4p"
+      },
+      "type": "message_creation"
+    },
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "type": "message_creation",
+    "usage": null,
+    "expires_at": 1713409609
+  },
+  "event": "thread.run.step.created"
+}
+{
+  "data": {
+    "id": "step_GyvUWdWillIPmUuJxi2QBym5",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": null,
+    "created_at": 1713409022,
+    "failed_at": null,
+    "last_error": null,
+    "object": "thread.run.step",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "in_progress",
+    "step_details": {
+      "message_creation": {
+        "message_id": "msg_otk4PqGWeK4ciIT5qiWrgC4p"
+      },
+      "type": "message_creation"
+    },
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "type": "message_creation",
+    "usage": null,
+    "expires_at": 1713409609
+  },
+  "event": "thread.run.step.in_progress"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "completed_at": null,
+    "content": [],
+    "created_at": 1713409022,
+    "file_ids": [],
+    "incomplete_at": null,
+    "incomplete_details": null,
+    "metadata": {},
+    "object": "thread.message",
+    "role": "assistant",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "in_progress",
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0"
+  },
+  "event": "thread.message.created"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "completed_at": null,
+    "content": [],
+    "created_at": 1713409022,
+    "file_ids": [],
+    "incomplete_at": null,
+    "incomplete_details": null,
+    "metadata": {},
+    "object": "thread.message",
+    "role": "assistant",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "in_progress",
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0"
+  },
+  "event": "thread.message.in_progress"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "annotations": [],
+            "value": "The"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " solution"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " to"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " the"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " equation"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " \\("
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "3"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "x"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " +"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " "
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "11"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " ="
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " "
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "14"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "\\)"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " is"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " \\("
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "x"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " ="
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": " "
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "1"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": "\\"
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "delta": {
+      "content": [
+        {
+          "index": 0,
+          "type": "text",
+          "text": {
+            "value": ")."
+          }
+        }
+      ]
+    },
+    "object": "thread.message.delta"
+  },
+  "event": "thread.message.delta"
+}
+{
+  "data": {
+    "id": "msg_otk4PqGWeK4ciIT5qiWrgC4p",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "completed_at": 1713409023,
+    "content": [
+      {
+        "text": {
+          "annotations": [],
+          "value": "The solution to the equation \\(3x + 11 = 14\\) is \\(x = 1\\)."
+        },
+        "type": "text"
+      }
+    ],
+    "created_at": 1713409022,
+    "file_ids": [],
+    "incomplete_at": null,
+    "incomplete_details": null,
+    "metadata": {},
+    "object": "thread.message",
+    "role": "assistant",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "completed",
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0"
+  },
+  "event": "thread.message.completed"
+}
+{
+  "data": {
+    "id": "step_GyvUWdWillIPmUuJxi2QBym5",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": 1713409023,
+    "created_at": 1713409022,
+    "failed_at": null,
+    "last_error": null,
+    "object": "thread.run.step",
+    "run_id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "status": "completed",
+    "step_details": {
+      "message_creation": {
+        "message_id": "msg_otk4PqGWeK4ciIT5qiWrgC4p"
+      },
+      "type": "message_creation"
+    },
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "type": "message_creation",
+    "usage": {
+      "completion_tokens": 25,
+      "prompt_tokens": 217,
+      "total_tokens": 242
+    },
+    "expires_at": 1713409609
+  },
+  "event": "thread.run.step.completed"
+}
+{
+  "data": {
+    "id": "run_0PqlNbmtft5Nz6F8eaYsP1vU",
+    "assistant_id": "asst_9UdKwJ8S7iOMrlEX6lzXpLWD",
+    "cancelled_at": null,
+    "completed_at": 1713409023,
+    "created_at": 1713409009,
+    "expires_at": null,
+    "failed_at": null,
+    "file_ids": [],
+    "incomplete_details": null,
+    "instructions": "Please address the user as Jane Doe. The user has a premium account.",
+    "last_error": null,
+    "max_completion_tokens": null,
+    "max_prompt_tokens": null,
+    "metadata": {},
+    "model": "gpt-4-1106-preview",
+    "object": "thread.run",
+    "required_action": null,
+    "response_format": "auto",
+    "started_at": 1713409009,
+    "status": "completed",
+    "thread_id": "thread_rudF1jmbDRotBYIm3RVJIoX0",
+    "tool_choice": "auto",
+    "tools": [
+      {
+        "type": "code_interpreter"
+      }
+    ],
+    "truncation_strategy": {
+      "type": "auto",
+      "last_messages": null
+    },
+    "usage": {
+      "completion_tokens": 86,
+      "prompt_tokens": 362,
+      "total_tokens": 448
+    },
+    "temperature": 1.0,
+    "top_p": 1.0
+  },
+  "event": "thread.run.completed"
+}
+#+end_example
+
+#+RESULTS:
+: AssistantDeleted(id='asst_9UdKwJ8S7iOMrlEX6lzXpLWD', deleted=True, object='assistant.deleted')
+#+begin_src jupyter-python
+#+end_src
+
+#+begin_src jupyter-python
+#+end_src
+
+* 开发 Python 代码小助手
+
+#+begin_src jupyter-python
+import openai  # 导入 openai 库
+
+# 从环境变量 OPENAI_API_KEY 中获取 API 密钥
+client = openai.OpenAI()
+
+# 创建一个名为 "Python Master" 的助手，它能根据需求生成可以运行的 Python 代码
+assistant_python = client.beta.assistants.create(
+    name="Python Master",
+    instructions="You are a Python Expert. Generate runnable Python code according to messages.",
+    tools=[{"type": "code_interpreter"}],  # 使用工具：代码解释器
+    model="gpt-4-1106-preview",  # 使用模型： GPT-4
+)
+
+# 创建一个交流线程
+thread_python = client.beta.threads.create()
+#+end_src
+
+#+begin_src jupyter-python
+assistant_python.id
+#+end_src
+
+#+RESULTS:
+: 'asst_ZUGg9t7ewn9iRI966OiNSwts'
+#+begin_src jupyter-python
+# 在该线程中创建一条信息
+message = client.beta.threads.messages.create(
+    thread_id=thread_python.id,
+    role="user",
+    content="快速排序咋个写？",
+)
+#+end_src
+
+#+begin_src jupyter-python
+# 创建并等待执行流完成，用于处理该线程中的交互和问题解答
+run = client.beta.threads.runs.create_and_poll(
+    thread_id=thread_python.id,
+    assistant_id=assistant_python.id,
+)
+
+print("Run completed with status: " + run.status)  # 打印执行流的完成状态
+#+end_src
+
+#+begin_example
+Run completed with status: completed
+#+end_example
+
+#+begin_src jupyter-python
+# 如果执行流状态为 "completed"（已完成），则获取并打印所有消息
+if run.status == "completed":
+    messages = client.beta.threads.messages.list(thread_id=thread_python.id)
+
+    print("\nMessages:\n")
+    for message in messages:
+        assert message.content[0].type == "text"
+        print(f"Role: {message.role.capitalize()}")  # 角色名称首字母大写
+        print("Message:")
+        print(message.content[0].text.value + "\n")  # 每条消息后添加空行以增加可读性
+#+end_src
+
+#+begin_example
+
+Messages:
+
+Role: Assistant
+Message:
+快速排序算法（Quick Sort）是一种常见的排序算法，它采用了分治策略。在平均状况下，排序n个项目要O(n log n)次比较。在最坏状况下则需要O(n^2)次比较，但这种状况并不常见。实际上，快速排序通常明显比其他Ο(n log n)算法更快，因为它的内部循环（inner loop）可以很有效地在大部分的架构上运行。
+
+基本思想是：
+1. 从数列中挑出一个元素，称为"基准"（pivot），
+2. 重新排序数列，所有比基准值小的元素摆放在基准前面，所有比基准值大的元素摆在基准的后面（相同的数可以到任一边）。在这个分区退出之后，该基准就处于数列的中间位置。这个称为分区（partition）操作。
+3. 递归地（recursive）把小于基准值元素的子数列和大于基准值元素的子数列排序。
+
+下面是一个快速排序的Python实现示例：
+
+```python
+def quick_sort(arr):
+    # 辅助递归函数，使用数组切片
+    def _quick_sort(items, low, high):
+        if low < high:
+            pivot_index = partition(items, low, high)
+            _quick_sort(items, low, pivot_index)  # 递归排序基准左侧
+            _quick_sort(items, pivot_index + 1, high)  # 递归排序基准右侧
+            
+    def partition(array, low, high):
+        # 选择中间的值为基准，以防止对于近乎排序好的数组性能差
+        pivot = array[(low + high) // 2]
+        left = low
+        right = high
+        while True:
+            while array[left] < pivot: # 从左向右找到第一个大于等于pivot的值
+                left += 1
+            while array[right] > pivot: # 从右向左找到第一个小于等于pivot的值
+                right -= 1
+            if left >= right: # 如果两个指针相遇，分区完成
+                return right
+            # 如果左边的值大于基准，而右边的值小于基准，交换它们
+            array[left], array[right] = array[right], array[left]
+            left += 1
+            right -= 1
+
+    _quick_sort(arr, 0, len(arr) - 1)
+    return arr
+```
+
+这段代码实现了经典的快速排序算法，并进行了适度的优化。这个快速排序版本使用了基准值选择的优化，并且通过递归调用实现了分区操作的递归。如果你想我测试这段代码，请提供一个数组。
+
+Role: User
+Message:
+快速排序咋个写？
+
+#+end_example
+
+#+begin_src jupyter-python
+# 在该线程中创建一条信息
+message = client.beta.threads.messages.create(
+    thread_id=thread_python.id,
+    role="user",
+    content="红黑树呢？",
+)
+#+end_src
+
+#+begin_src jupyter-python
+# 创建并等待执行流完成，用于处理该线程中的交互和问题解答
+run = client.beta.threads.runs.create_and_poll(
+    thread_id=thread_python.id,
+    assistant_id=assistant_python.id,
+)
+
+print("Run completed with status: " + run.status)  # 打印执行流的完成状态
+#+end_src
+
+#+begin_example
+Run completed with status: completed
+#+end_example
+
+#+begin_src jupyter-python
+# 如果执行流状态为 "completed"（已完成），则获取并打印所有消息
+if run.status == "completed":
+    messages = client.beta.threads.messages.list(thread_id=thread_python.id)
+
+    print("\nMessages:\n")
+    for message in messages:
+        assert message.content[0].type == "text"
+        print(f"Role: {message.role.capitalize()}")  # 角色名称首字母大写
+        print("Message:")
+        print(message.content[0].text.value + "\n")  # 每条消息后添加空行以增加可读性
+#+end_src
+
+#+begin_example
+
+Messages:
+
+Role: Assistant
+Message:
+红黑树是一种自平衡二叉查找树，它在插入和删除等动态集合操作时，可以保证二叉树的平衡，因此查找操作始终具有对数时间复杂度。每个节点都遵循红黑树的性质:
+
+1. 每个节点要么是红的，要么是黑的。
+2. 根节点是黑的。
+3. 所有叶子（NIL节点，空节点）都是黑的。
+4. 每个红色节点必须有两个黑色的子节点。（从每个叶子到根的所有路径上不能有两个连续的红色节点）
+5. 从任一节点到其每个叶子的所有简单路径都包含相同数目的黑色节点。
+
+由于红黑树实现相对复杂，通常标准库都会提供实现，比如C++的`std::map`以红黑树为基础实现，Java中的`TreeMap`也是。在Python中，并没有直接的红黑树实现，但是内建的排序字典(`collections.OrderedDict`)和集合(`set`)都实现了类似的平衡树结构。
+
+以下是一个非常基本的红黑树节点定义的示例，不包含完整的红黑树操作实现。完整的红黑树操作（如插入、删除、平衡操作等）需要更详细的代码实现和大量的边界条件处理。
+
+```python
+class Node:
+    def __init__(self, color, key, left=None, right=None, p=None):
+        self.color = color  # 节点颜色（红或黑）
+        self.key = key      # 节点关键字
+        self.left = left    # 左子节点
+        self.right = right  # 右子节点
+        self.p = p          # 父节点
+
+class RedBlackTree:
+    def __init__(self):
+        self.NIL = Node('BLACK', None)  # 初始化NIL节点
+        self.root = self.NIL            # 树的根指向NIL节点
+
+    # 其他操作，如插入、删除等...
+```
+
+实际插入和删除节点时，需要对树进行旋转和重新着色，以保证上述红黑树的性质。这些操作比较复杂，涉及许多特殊情况的处理。由于篇幅原因，我没有在这里提供完整的实现。如果你需要红黑树的一个库，你可以在Python中使用第三方库，如`rbtree`。
+
+请注意，如果你需要红黑树的具体实现，并想要在Python中使用它，我建议寻找一个可靠的第三方库，这可以节省很多时间，并减少错误。如果你只是希望学习算法本身的话，那么我建议阅读更详细的数据结构与算法书籍中的红黑树章节或者查找在线教程和资料，以获得完整的理解和实现方法。
+
+Role: User
+Message:
+红黑树呢？
+
+Role: Assistant
+Message:
+快速排序算法（Quick Sort）是一种常见的排序算法，它采用了分治策略。在平均状况下，排序n个项目要O(n log n)次比较。在最坏状况下则需要O(n^2)次比较，但这种状况并不常见。实际上，快速排序通常明显比其他Ο(n log n)算法更快，因为它的内部循环（inner loop）可以很有效地在大部分的架构上运行。
+
+基本思想是：
+1. 从数列中挑出一个元素，称为"基准"（pivot），
+2. 重新排序数列，所有比基准值小的元素摆放在基准前面，所有比基准值大的元素摆在基准的后面（相同的数可以到任一边）。在这个分区退出之后，该基准就处于数列的中间位置。这个称为分区（partition）操作。
+3. 递归地（recursive）把小于基准值元素的子数列和大于基准值元素的子数列排序。
+
+下面是一个快速排序的Python实现示例：
+
+```python
+def quick_sort(arr):
+    # 辅助递归函数，使用数组切片
+    def _quick_sort(items, low, high):
+        if low < high:
+            pivot_index = partition(items, low, high)
+            _quick_sort(items, low, pivot_index)  # 递归排序基准左侧
+            _quick_sort(items, pivot_index + 1, high)  # 递归排序基准右侧
+            
+    def partition(array, low, high):
+        # 选择中间的值为基准，以防止对于近乎排序好的数组性能差
+        pivot = array[(low + high) // 2]
+        left = low
+        right = high
+        while True:
+            while array[left] < pivot: # 从左向右找到第一个大于等于pivot的值
+                left += 1
+            while array[right] > pivot: # 从右向左找到第一个小于等于pivot的值
+                right -= 1
+            if left >= right: # 如果两个指针相遇，分区完成
+                return right
+            # 如果左边的值大于基准，而右边的值小于基准，交换它们
+            array[left], array[right] = array[right], array[left]
+            left += 1
+            right -= 1
+
+    _quick_sort(arr, 0, len(arr) - 1)
+    return arr
+```
+
+这段代码实现了经典的快速排序算法，并进行了适度的优化。这个快速排序版本使用了基准值选择的优化，并且通过递归调用实现了分区操作的递归。如果你想我测试这段代码，请提供一个数组。
+
+Role: User
+Message:
+快速排序咋个写？
+
+#+end_example
+
+* Homework: 将数学辅导老师和Python小助手的代码重构，实现类似 Playground 的对话输入体验
