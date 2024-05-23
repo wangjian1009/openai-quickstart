@@ -1,0 +1,359 @@
+#+TITLE: LangChain 核心模块学习：Chains（sequential_chain）
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-LangChain-chains-sequential :display text/plain
+
+对于简单的大模型应用，单独使用语言模型（LLMs）是可以的。
+
+*但更复杂的大模型应用需要将 =LLMs= 和 =Chat Models= 链接在一起 - 要么彼此链接，要么与其他组件链接。*
+
+LangChain 为这种“链式”应用程序提供了 =Chain= 接口。
+
+LangChain 以通用方式定义了 =Chain= ，它是对组件进行调用序列的集合，其中可以包含其他链。
+
+* Chain Class 基类
+类继承关系：
+
+#+begin_example
+Chain --> <name>Chain  # Examples: LLMChain, MapReduceChain, RouterChain
+#+end_example
+
+*代码实现：[[https://github.com/langchain-ai/langchain/blob/master/libs/langchain/langchain/chains/base.py]]*
+
+#+begin_src python :eval no
+  # 定义一个名为Chain的基础类
+  class Chain(Serializable, Runnable[Dict[str, Any], Dict[str, Any]], ABC):
+      """为创建结构化的组件调用序列的抽象基类。
+    
+      链应该用来编码对组件的一系列调用，如模型、文档检索器、其他链等，并为此序列提供一个简单的接口。
+    
+      Chain接口使创建应用程序变得容易，这些应用程序是：
+      - 有状态的：给任何Chain添加Memory可以使它具有状态，
+      - 可观察的：向Chain传递Callbacks来执行额外的功能，如记录，这在主要的组件调用序列之外，
+      - 可组合的：Chain API足够灵活，可以轻松地将Chains与其他组件结合起来，包括其他Chains。
+    
+      链公开的主要方法是：
+      - `__call__`：链是可以调用的。`__call__`方法是执行Chain的主要方式。它将输入作为一个字典接收，并返回一个字典输出。
+      - `run`：一个方便的方法，它以args/kwargs的形式接收输入，并将输出作为字符串或对象返回。这种方法只能用于一部分链，不能像`__call__`那样返回丰富的输出。
+      """
+
+      # 调用链
+      def invoke(
+          self, input: Dict[str, Any], config: Optional[runnableConfig] = None
+      ) -> Dict[str, Any]:
+          """传统调用方法。"""
+          return self(input, **(config or {}))
+
+      # 链的记忆，保存状态和变量
+      memory: Optional[BaseMemory] = None
+      """可选的内存对象，默认为None。
+      内存是一个在每个链的开始和结束时被调用的类。在开始时，内存加载变量并在链中传递它们。在结束时，它保存任何返回的变量。
+      有许多不同类型的内存，请查看内存文档以获取完整的目录。"""
+
+      # 回调，可能用于链的某些操作或事件。
+      callbacks: Callbacks = Field(default=None, exclude=True)
+      """可选的回调处理程序列表（或回调管理器）。默认为None。
+      在对链的调用的生命周期中，从on_chain_start开始，到on_chain_end或on_chain_error结束，都会调用回调处理程序。
+      每个自定义链可以选择调用额外的回调方法，详细信息请参见Callback文档。"""
+
+      # 是否详细输出模式
+      verbose: bool = Field(default_factory=_get_verbosity)
+      """是否以详细模式运行。在详细模式下，一些中间日志将打印到控制台。默认值为`langchain.verbose`。"""
+
+      # 与链关联的标签
+      tags: Optional[List[str]] = None
+      """与链关联的可选标签列表，默认为None。
+      这些标签将与对这个链的每次调用关联起来，并作为参数传递给在`callbacks`中定义的处理程序。
+      你可以使用这些来例如识别链的特定实例与其用例。"""
+
+      # 与链关联的元数据
+      metadata: Optional[Dict[str, Any]] = None
+      """与链关联的可选元数据，默认为None。
+      这些元数据将与对这个链的每次调用关联起来，并作为参数传递给在`callbacks`中定义的处理程序。
+      你可以使用这些来例如识别链的特定实例与其用例。"""
+#+end_src
+
+* LLMChain
+LLMChain 是 LangChain 中最简单的链，作为其他复杂 Chains 和 Agents 的内部调用，被广泛应用。
+
+一个LLMChain由PromptTemplate和语言模型（LLM or Chat Model）组成。
+它使用直接传入（或 memory 提供）的 key-value 来规范化生成 Prompt Template（提示模板），并将生成的 prompt （格式化后的字符串）传递给大模型，并返回大模型输出。
+
+#+ATTR_ORG: :width 800
+[[../images/llm_chain.png]]
+
+#+begin_src jupyter-python :results none
+  from langchain_openai import OpenAI
+  from langchain.prompts import PromptTemplate
+
+  base_url='https://api.xty.app/v1'
+
+  llm = OpenAI(model_name="gpt-3.5-turbo-instruct", temperature=0.9, max_tokens=500, base_url=base_url)
+#+end_src
+
+#+begin_src jupyter-python :results none
+  prompt = PromptTemplate(
+      input_variables=["product"],
+      template="给制造{product}的有限公司取10个好名字，并给出完整的公司名称",
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  from langchain.chains import LLMChain
+
+  chain = LLMChain(llm=llm, prompt=prompt)
+  print(chain.run({
+      'product': "性能卓越的GPU"
+      }))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+  /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages/langchain_core/_api/deprecation.py:119: LangChainDeprecationWarning: The class `LLMChain` was deprecated in LangChain 0.1.17 and will be removed in 0.3.0. Use RunnableSequence, e.g., `prompt | llm` instead.
+    warn_deprecated(
+  /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages/langchain_core/_api/deprecation.py:119: LangChainDeprecationWarning: The method `Chain.run` was deprecated in langchain 0.1.0 and will be removed in 0.3.0. Use invoke instead.
+    warn_deprecated(
+  1. 创新科技图形有限公司 (InnovativeTech Graphics Limited)
+  2. 极致芯片科技有限公司 (UltimateChip Technology Limited)
+  3. 强力图像处理器有限公司 (PowerGraphics Processor Limited)
+  4. 先锋图形科技有限公司 (Pioneer Graphics Technology Limited)
+  5. 超群视觉科技有限公司 (SupremeVision Technology Limited)
+  6. 创造性GPU科技有限公司 (CreativeGPU Technology Limited)
+  7. 精密图形处理器有限公司 (Precision Graphics Processor Limited)
+  8. 高效计算图形有限公司 (EfficientCompute Graphics Limited)
+  9. 先进视觉处理器有限公司 (Advanced Vision Processor Limited)
+  10. 顶尖图形芯片有限公司 (Top-notch Graphics Chips Limited)
+#+end_example
+
+#+begin_src jupyter-python
+  chain.verbose = True
+#+end_src
+
+#+begin_src jupyter-python
+  chain.verbose
+#+end_src
+
+#+RESULTS:
+: True
+#+begin_src jupyter-python
+  print(chain.run({
+      'product': "性能卓越的GPU"
+      }))
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+
+  > Entering new LLMChain chain...
+  Prompt after formatting:
+  给制造性能卓越的GPU的有限公司取10个好名字，并给出完整的公司名称
+
+  > Finished chain.
+  1. 极睿科技 (ExtremeTech Solutions Co., Ltd.)
+  2. 光速科技 (LightSpeed Technologies Co., Ltd.)
+  3. 元创科技 (GenesisTech Innovations Co., Ltd.)
+  4. 弦图科技 (StringGraph Technologies Co., Ltd.)
+  5. 晶元科技 (CrystalCore Technologies Co., Ltd.)
+  6. 超级视觉科技 (SuperVision Technologies Co., Ltd.)
+  7. 峰域科技 (PeakScope Technologies Co., Ltd.)
+  8. 量子瞳科技 (QuantumEye Technologies Co., Ltd.)
+  9. 融智科技 (FusionIQ Technologies Co., Ltd.)
+  10. 创想加速科技 (Ideon Accelerate Technologies Co., Ltd.)
+#+end_example
+
+* Sequential Chain
+串联式调用语言模型（将一个调用的输出作为另一个调用的输入）。
+
+顺序链（Sequential Chain）允许用户连接多个链并将它们组合成执行特定场景的流水线（Pipeline）。
+有两种类型的顺序链：
+
+- SimpleSequentialChain：最简单形式的顺序链，每个步骤都具有单一输入/输出，并且一个步骤的输出是下一个步骤的输入。
+- SequentialChain：更通用形式的顺序链，允许多个输入/输出。
+
+** 使用 SimpleSequentialChain 实现戏剧摘要和评论（单输入/单输出）
+#+ATTR_ORG: :width 800
+[[../images/simple_sequential_chain_0.png]]
+
+#+begin_src jupyter-python :results none
+  # 这是一个 LLMChain，用于根据剧目的标题撰写简介。
+
+  llm = OpenAI(temperature=0.7, max_tokens=1000, base_url=base_url)
+
+  template = """你是一位剧作家。根据戏剧的标题，你的任务是为该标题写一个简介。
+
+  标题：{title}
+  剧作家：以下是对上述戏剧的简介："""
+
+  prompt_template = PromptTemplate(input_variables=["title"], template=template)
+  synopsis_chain = LLMChain(llm=llm, prompt=prompt_template)
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 这是一个LLMChain，用于根据剧情简介撰写一篇戏剧评论。
+  # llm = OpenAI(temperature=0.7, max_tokens=1000)
+  template = """你是《纽约时报》的戏剧评论家。根据剧情简介，你的工作是为该剧撰写一篇评论。
+
+  剧情简介：
+  {synopsis}
+
+  以下是来自《纽约时报》戏剧评论家对上述剧目的评论："""
+
+  prompt_template = PromptTemplate(input_variables=["synopsis"], template=template)
+  review_chain = LLMChain(llm=llm, prompt=prompt_template)
+#+end_src
+
+#+ATTR_ORG: :width 800
+[[../images/simple_sequential_chain_1.png]]
+
+#+begin_src jupyter-python :results none
+  # 这是一个SimpleSequentialChain，按顺序运行这两个链
+  from langchain.chains import SimpleSequentialChain
+
+  overall_chain = SimpleSequentialChain(chains=[synopsis_chain, review_chain], verbose=True)
+#+end_src
+
+#+begin_src jupyter-python
+  review = overall_chain.run("三体人不是无法战胜的")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+
+  > Entering new SimpleSequentialChain chain...
+  《三体人不是无法战胜的》
+
+  在这部戏剧中，人类和三体人之间的宿命对决将上演。人类社会面临着前所未有的威胁，来自宇宙深处的三体人族群。然而，当一名勇敢的人类探险家意外地发现了三体人的软肋，战局开始发生转变。随着剧情的推进，观众将被带入一场超越时空和文明的较量，探索智慧和勇气对抗力量的力量。这部戏剧将探讨宇宙间的复杂关系，以及在最黑暗的时刻，人类如何挺身而出，证明三体人并非无法战胜。
+  《三体人不是无法战胜的》：一场人类与三体人的宿命对决
+
+  在这部引人入胜的戏剧中，我们被带入了一场跨越时空和文明的较量，探索智慧和勇气对抗力量的壮举。人类社会面临着前所未有的挑战，来自宇宙深处的三体人族群对地球构成了极大的威胁。然而，正当一切看似毫无希望之际，一名勇敢的人类探险家意外地发现了三体人的软肋，这一发现让战局出现了意想不到的变化。
+
+  这部戏剧不仅仅是一场科幻戏剧，它更是一次关于人类意志与勇气的深刻探索。剧中所呈现的复杂关系和角色之间的心理挣扎，使观众在观剧过程中深受触动。通过人类与三体人之间的对抗，我们看到了智慧和勇气在最黑暗的时刻的闪耀。
+
+  导演和演员们通过精湛的表演，将剧中角色的内心世界展现得淋漓尽致。他们的演技不仅令人信服，更让观众对剧情的发展产生了强烈的共鸣。
+
+  虽然剧情设定在未来的宇宙中，但其中蕴含的人性之美和智慧的力量却与我们当下的世界息息相关。在这个充满挑战和不确定性的时代，这部戏剧为我们提供了一种力量的启示：即使面对最强大的敌人，人类也能够以智慧和勇气战胜一切。
+
+  总的来说，《三体人不是无法战胜的》是一部令人振奋的戏剧作品，它引领观众穿越时空，感受人类意志的坚韧和勇气的伟大。这是一部不容错过的戏剧，必将成为舞台艺术的经典之作。
+
+  > Finished chain.
+#+end_example
+
+#+begin_src jupyter-python
+  review = overall_chain.run("星球大战第九季")
+#+end_src
+
+#+RESULTS:
+#+begin_example
+
+
+  > Entering new SimpleSequentialChain chain...
+  《星球大战第九季》
+
+  在这部戏剧中，银河系再次陷入了混乱和冲突之中。一场新的战争即将爆发，旧的联盟和新的敌人之间的对抗再次引发了整个宇宙的动荡。然而，在这个动荡的时代，一群英雄和反抗者崛起，试图守护和平与正义。
+
+  主角们面临着前所未有的考验，他们的决定将决定整个银河系的命运。在这个冲突的背后，隐藏着深层的阴谋和意图，每个角色都被推向了自己信仰和价值观的边缘。友谊、勇气和背叛交织在一起，为观众呈现了一个充满戏剧性和惊喜的故事。
+
+  《星球大战第九季》不仅是一场史诗般的冒险，更是一段关于信念、权力和自我牺牲的探索。在这个宇宙中，每个人都有自己的角色扮演，每个选择都将产生深远的影响。这是一场关于光明与黑暗之间永恒对抗的戏剧，也是关于希望与绝望的永恒较量。
+  《星球大战第九季》的舞台无疑是一个星际舞台，但其故事却牵动着人类内心最深处的情感和信仰。这部剧集以其震撼人心的战斗场面和令人难忘的角色形象，再次将观众带入了一个充满奇幻和冒险的世界。
+
+  故事的核心是一场旷日持久的斗争，这不仅仅是一场星球之间的战争，更是一场对信念和自由的争夺。主角们在命运的操控下，被迫面对艰难的选择，他们的决定将直接影响整个银河系的未来。这种内在的冲突和外在的战斗构成了剧集的核心张力，也是吸引观众的重要因素之一。
+
+  在这个宇宙中，每个角色都被赋予了独特而深刻的内心世界。观众将目睹他们的成长、挣扎和崛起，这些都是人性的真实写照。友谊、勇气和背叛交织在一起，为观众呈现了一个充满戏剧性和惊喜的故事。
+
+  除了令人激动的战斗场面和精彩的特效外，《星球大战第九季》还探索了一系列深刻的主题，如权力、自我牺牲和希望。这使得剧集不仅仅是一场娱乐，更是一次对人性和社会价值观的深度反思。
+
+  总的来说，《星球大战第九季》是一部令人兴奋的史诗般冒险，它引人入胜的故事情节和深刻的主题使其成为一部不容错过的作品。
+
+  > Finished chain.
+#+end_example
+
+** 使用 SequentialChain 实现戏剧摘要和评论（多输入/多输出）
+#+ATTR_ORG: :width 800
+[[../images/sequential_chain_0.png]]
+
+#+begin_src jupyter-python :results none
+  # # 这是一个 LLMChain，根据剧名和设定的时代来撰写剧情简介。
+  llm = OpenAI(temperature=.7, max_tokens=1000, base_url=base_url)
+  template = """你是一位剧作家。根据戏剧的标题和设定的时代，你的任务是为该标题写一个简介。
+
+  标题：{title}
+  时代：{era}
+  剧作家：以下是对上述戏剧的简介："""
+
+  prompt_template = PromptTemplate(input_variables=["title", "era"], template=template)
+  # output_key
+  synopsis_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="synopsis", verbose=True)
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 这是一个LLMChain，用于根据剧情简介撰写一篇戏剧评论。
+
+  template = """你是《纽约时报》的戏剧评论家。根据该剧的剧情简介，你需要撰写一篇关于该剧的评论。
+
+  剧情简介：
+  {synopsis}
+
+  来自《纽约时报》戏剧评论家对上述剧目的评价："""
+
+  prompt_template = PromptTemplate(input_variables=["synopsis"], template=template)
+  review_chain = LLMChain(llm=llm, prompt=prompt_template, output_key="review", verbose=True)
+#+end_src
+
+#+begin_src jupyter-python :results none
+  from langchain.chains import SequentialChain
+
+  m_overall_chain = SequentialChain(
+      chains=[synopsis_chain, review_chain],
+      input_variables=["era", "title"],
+      # Here we return multiple variables
+      output_variables=["synopsis", "review"],
+      verbose=True)
+#+end_src
+
+#+begin_src jupyter-python
+  m_overall_chain({"title":"三体人不是无法战胜的", "era": "二十一世纪的新中国"})
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+#+begin_example
+  /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages/langchain_core/_api/deprecation.py:119: LangChainDeprecationWarning: The method `Chain.__call__` was deprecated in langchain 0.1.0 and will be removed in 0.3.0. Use invoke instead.
+    warn_deprecated(
+
+
+  > Entering new SequentialChain chain...
+
+
+  > Entering new LLMChain chain...
+  Prompt after formatting:
+  你是一位剧作家。根据戏剧的标题和设定的时代，你的任务是为该标题写一个简介。
+
+  标题：三体人不是无法战胜的
+  时代：二十一世纪的新中国
+  剧作家：以下是对上述戏剧的简介：
+
+  > Finished chain.
+
+
+  > Entering new LLMChain chain...
+  Prompt after formatting:
+  你是《纽约时报》的戏剧评论家。根据该剧的剧情简介，你需要撰写一篇关于该剧的评论。
+
+  剧情简介：
+  在二十一世纪的新中国，人类面临着一场前所未有的挑战：地球上突然出现了一批来自三体星系的外星人。他们以惊人的科技和超越人类理解的智慧，威胁着人类的生存。然而，在这个挑战面前，人类展现出了无与伦比的勇气和智慧。《三体人不是无法战胜的》讲述了在这场宇宙之战中，人类面对未知与困境时的坚韧和拼搏，以及他们与外星文明之间的角力与对抗。这部戏剧将带领观众穿越时空，探索人类勇气与智慧的辉煌光芒，以及对未知世界的探索与挑战。
+
+  来自《纽约时报》戏剧评论家对上述剧目的评价：
+
+  > Finished chain.
+
+  > Finished chain.
+#+end_example
+| title | : | 三体人不是无法战胜的 | era | : | 二十一世纪的新中国 | synopsis | : | 在二十一世纪的新中国，人类面临着一场前所未有的挑战：地球上突然出现了一批来自三体星系的外星人。他们以惊人的科技和超越人类理解的智慧，威胁着人类的生存。然而，在这个挑战面前，人类展现出了无与伦比的勇气和智慧。《三体人不是无法战胜的》讲述了在这场宇宙之战中，人类面对未知与困境时的坚韧和拼搏，以及他们与外星文明之间的角力与对抗。这部戏剧将带领观众穿越时空，探索人类勇气与智慧的辉煌光芒，以及对未知世界的探索与挑战。 | review | : | 《三体人不是无法战胜的》是一部极具震撼力和深度的戏剧作品，它不仅令人目不转睛地关注着宇宙间的巨大冲突，更是一次对人类勇气和智慧的赞颂。\n\n在这个故事中，我们被引领进入一个异想天开的世界，一个被外星文明入侵威胁的未来。但正是在这种威胁之下，人类所展现出的坚韧与拼搏，才真正凸显出了其无与伦比的力量。这不仅仅是一场关于科技与智慧的较量，更是一次对人性的审视和探索。\n\n剧中角色的塑造也是令人瞩目的。他们不仅仅是戏剧人物，更是象征着人类面对未知和困境时的反应。他们的内心挣扎、勇敢面对以及最终的成长，都将观众带入了一个情感丰富、思想深刻的旅程中。\n\n此外，剧中对未知世界的探索与挑战也是引人入胜的。通过时空穿梭和外星文明的对抗，观众不仅仅是在追随角色的脚步，更是在探索人类文明的辉煌与脆弱，以及面对未知时的无尽可能性。\n\n总的来说，《三体人不是无法战胜的》不仅是一部引人入胜的科幻戏剧，更是一次对人类勇气与智慧的赞美，以及对未知世界的探索与思考。它不仅仅是一场娱乐，更是一次心灵的洗礼和启迪。 |
+:END:
+
+** Homework
+*** 使用 OutputParser 优化 overall_chain 输出格式，区分 synopsis_chain 和 review_chain 的结果
+
+#+begin_src jupyter-python
+#+end_src
