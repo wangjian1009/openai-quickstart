@@ -1,0 +1,177 @@
+#+TITLE: LangChain 核心模块学习：Model I/O（Output Parser）
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-LangChain-prompt :display text/plain
+
+=Model I/O= 是 LangChain 为开发者提供的一套面向 LLM 的标准化模型接口，包括模型输入（Prompts）、模型输出（Output Parsers）和模型本身（Models）。
+
+- Prompts：模板化、动态选择和管理模型输入
+- Models：以通用接口调用语言模型
+- Output Parser：从模型输出中提取信息，并规范化内容
+
+#+ATTR_ORG: :width 800  
+[[../images/model_io.jpeg]]
+
+* 输出解析器 Output Parser
+*语言模型的输出是文本。*
+
+但很多时候，您可能希望获得比纯文本*更结构化的信息*。这就是输出解析器的价值所在。
+
+输出解析器是帮助结构化语言模型响应的类。它们必须实现两种主要方法：
+
+- "获取格式指令"：返回一个包含有关如何格式化语言模型输出的字符串的方法。
+- "解析"：接受一个字符串（假设为来自语言模型的响应），并将其解析成某种结构。
+
+然后还有一种可选方法：
+
+- "使用提示进行解析"：接受一个字符串（假设为来自语言模型的响应）和一个提示（假设为生成此响应的提示），并将其解析成某种结构。在需要重新尝试或修复输出，并且需要从提示中获取信息以执行此操作时，通常会提供提示。
+
+** 列表解析 List Parser
+当您想要返回一个逗号分隔的项目列表时，可以使用此输出解析器。
+
+#+begin_src jupyter-python :results none
+  from langchain.output_parsers import CommaSeparatedListOutputParser
+  from langchain.prompts import PromptTemplate, ChatPromptTemplate, HumanMessagePromptTemplate
+  from langchain_openai import OpenAI
+
+  # 创建一个输出解析器，用于处理带逗号分隔的列表输出
+  output_parser = CommaSeparatedListOutputParser()
+
+  # 获取格式化指令，该指令告诉模型如何格式化其输出
+  format_instructions = output_parser.get_format_instructions()
+
+  # 创建一个提示模板，它会基于给定的模板和变量来生成提示
+  prompt = PromptTemplate(
+      template="List five {subject}.\n{format_instructions}",  # 模板内容
+      input_variables=["subject"],  # 输入变量
+      partial_variables={"format_instructions": format_instructions}  # 预定义的变量，这里我们传入格式化指令
+  )
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 使用提示模板和给定的主题来格式化输入
+  _input = prompt.format(subject="ice cream flavors")
+#+end_src
+
+#+begin_src jupyter-python
+  print(_input)
+#+end_src
+
+#+RESULTS:
+: List five ice cream flavors.
+: Your response should be a list of comma separated values, eg: `foo, bar, baz` or `foo,bar,baz`
+
+#+begin_src jupyter-python :results none 
+  llm = OpenAI(temperature=0, base_url='https://api.xty.app/v1')
+#+end_src
+
+#+begin_src jupyter-python :results none
+  output = llm(_input)
+#+end_src
+
+#+begin_example
+/home/ubuntu/miniconda3/envs/langchain/lib/python3.10/site-packages/langchain_core/_api/deprecation.py:117: LangChainDeprecationWarning: The function `__call__` was deprecated in LangChain 0.1.7 and will be removed in 0.2.0. Use invoke instead.
+  warn_deprecated(
+#+end_example
+
+#+begin_src jupyter-python
+  print(output)
+#+end_src
+
+#+begin_example
+
+
+1. Chocolate
+2. Vanilla
+3. Strawberry
+4. Mint chocolate chip
+5. Cookies and cream
+#+end_example
+
+#+begin_src jupyter-python
+# 使用之前创建的输出解析器来解析模型的输出
+output_parser.parse(output)
+#+end_src
+
+#+RESULTS:
+: ['1. Chocolate\n2. Vanilla\n3. Strawberry\n4. Mint chocolate chip\n5. Cookies and cream']
+#+begin_src jupyter-python
+#+end_src
+
+** 日期解析 Datatime Parser
+
+#+begin_src jupyter-python
+from langchain.output_parsers import DatetimeOutputParser
+from langchain.chains import LLMChain
+
+output_parser = DatetimeOutputParser()
+template = """Answer the users question:
+
+{question}
+
+{format_instructions}"""
+
+prompt = PromptTemplate.from_template(
+    template,
+    partial_variables={"format_instructions": output_parser.get_format_instructions()},
+)
+#+end_src
+
+#+begin_src jupyter-python
+print(prompt)
+#+end_src
+
+#+begin_example
+input_variables=['question'] partial_variables={'format_instructions': "Write a datetime string that matches the following pattern: '%Y-%m-%dT%H:%M:%S.%fZ'.\n\nExamples: 27-03-17T12:02:04.895590Z, 1280-06-10T17:19:17.541779Z, 1716-10-13T13:11:25.293777Z\n\nReturn ONLY this string, no other words!"} template='Answer the users question:\n\n{question}\n\n{format_instructions}'
+#+end_example
+
+#+begin_src jupyter-python
+print(prompt.format(question="around when was bitcoin founded?"))
+#+end_src
+
+#+begin_example
+Answer the users question:
+
+around when was bitcoin founded?
+
+Write a datetime string that matches the following pattern: '%Y-%m-%dT%H:%M:%S.%fZ'.
+
+Examples: 27-03-17T12:02:04.895590Z, 1280-06-10T17:19:17.541779Z, 1716-10-13T13:11:25.293777Z
+
+Return ONLY this string, no other words!
+#+end_example
+
+#+begin_src jupyter-python
+chain = LLMChain(prompt=prompt, llm=OpenAI())
+#+end_src
+
+#+begin_src jupyter-python
+output = chain.run("around when was bitcoin founded?")
+#+end_src
+
+#+begin_example
+/home/ubuntu/miniconda3/envs/langchain/lib/python3.10/site-packages/langchain_core/_api/deprecation.py:117: LangChainDeprecationWarning: The function `run` was deprecated in LangChain 0.1.0 and will be removed in 0.2.0. Use invoke instead.
+  warn_deprecated(
+#+end_example
+
+#+begin_src jupyter-python
+output
+#+end_src
+
+#+RESULTS:
+: '\n\n2009-01-03T18:15:05.000000Z'
+#+begin_src jupyter-python
+output_parser.parse(output)
+#+end_src
+
+#+RESULTS:
+: datetime.datetime(2009, 1, 3, 18, 15, 5)
+#+begin_src jupyter-python
+print(output_parser.parse(output))
+#+end_src
+
+#+begin_example
+2009-01-03 18:15:05
+#+end_example
+
+#+begin_src jupyter-python
+#+end_src
