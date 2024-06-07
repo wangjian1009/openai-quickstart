@@ -82,6 +82,7 @@ LLMChain 是 LangChain 中最简单的链，作为其他复杂 Chains 和 Agents
 [[../images/llm_chain.png]]
 
 #+begin_src jupyter-python :results none
+  from pprint import pprint
   from langchain_openai import OpenAI
   from langchain.prompts import PromptTemplate
 
@@ -112,19 +113,21 @@ LLMChain 是 LangChain 中最简单的链，作为其他复杂 Chains 和 Agents
     warn_deprecated(
   /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages/langchain_core/_api/deprecation.py:119: LangChainDeprecationWarning: The method `Chain.run` was deprecated in langchain 0.1.0 and will be removed in 0.3.0. Use invoke instead.
     warn_deprecated(
-  1. 创新科技图形有限公司 (InnovativeTech Graphics Limited)
-  2. 极致芯片科技有限公司 (UltimateChip Technology Limited)
-  3. 强力图像处理器有限公司 (PowerGraphics Processor Limited)
-  4. 先锋图形科技有限公司 (Pioneer Graphics Technology Limited)
-  5. 超群视觉科技有限公司 (SupremeVision Technology Limited)
-  6. 创造性GPU科技有限公司 (CreativeGPU Technology Limited)
-  7. 精密图形处理器有限公司 (Precision Graphics Processor Limited)
-  8. 高效计算图形有限公司 (EfficientCompute Graphics Limited)
-  9. 先进视觉处理器有限公司 (Advanced Vision Processor Limited)
-  10. 顶尖图形芯片有限公司 (Top-notch Graphics Chips Limited)
+
+
+  1. 速翼科技有限公司 (SwiftWing Technologies Co., Ltd.)
+  2. 强力晶迅有限公司 (PowerCrystal Xun Co., Ltd.)
+  3. 磐石科技有限公司 (RockTech Solutions Co., Ltd.)
+  4. 极光卓越有限公司 (Aurora Excellence Co., Ltd.)
+  5. 炎龙制造有限公司 (FlameDragon Fabrications Co., Ltd.)
+  6. 星核科技有限公司 (StarCore Technologies Co., Ltd.)
+  7. 创导高性能有限公司 (Innovate High-Performance Co., Ltd.)
+  8. 飞鸟科技有限公司 (FlyingBird Technologies Co., Ltd.)
+  9. 超越视界有限公司 (BeyondVision Solutions Co., Ltd.)
+  10. 焚焰创新有限公司 (BlazeInnovate Co., Ltd.)
 #+end_example
 
-#+begin_src jupyter-python
+#+begin_src jupyter-python :results none
   chain.verbose = True
 #+end_src
 
@@ -144,21 +147,24 @@ LLMChain 是 LangChain 中最简单的链，作为其他复杂 Chains 和 Agents
 #+begin_example
 
 
-  > Entering new LLMChain chain...
+  [1m> Entering new LLMChain chain...[0m
   Prompt after formatting:
-  给制造性能卓越的GPU的有限公司取10个好名字，并给出完整的公司名称
+  [32;1m[1;3m给制造性能卓越的GPU的有限公司取10个好名字，并给出完整的公司名称[0m
 
-  > Finished chain.
-  1. 极睿科技 (ExtremeTech Solutions Co., Ltd.)
-  2. 光速科技 (LightSpeed Technologies Co., Ltd.)
-  3. 元创科技 (GenesisTech Innovations Co., Ltd.)
-  4. 弦图科技 (StringGraph Technologies Co., Ltd.)
-  5. 晶元科技 (CrystalCore Technologies Co., Ltd.)
-  6. 超级视觉科技 (SuperVision Technologies Co., Ltd.)
-  7. 峰域科技 (PeakScope Technologies Co., Ltd.)
-  8. 量子瞳科技 (QuantumEye Technologies Co., Ltd.)
-  9. 融智科技 (FusionIQ Technologies Co., Ltd.)
-  10. 创想加速科技 (Ideon Accelerate Technologies Co., Ltd.)
+  [1m> Finished chain.[0m
+
+
+
+  1. 创新视界科技有限公司
+  2. 先锋图像科技有限公司
+  3. 强劲视界半导体有限公司
+  4. 极致计算科技有限公司
+  5. 智能图像解决方案有限公司
+  6. 飞跃半导体科技有限公司
+  7. 高端图像处理科技有限公司
+  8. 全新视觉科技有限公司
+  9. 天马行空图像科技有限公司
+  10. 源源不断半导体科技有限公司
 #+end_example
 
 * Sequential Chain
@@ -220,23 +226,23 @@ LLMChain 是 LangChain 中最简单的链，作为其他复杂 Chains 和 Agents
 #+begin_example
 
 
-  > Entering new SimpleSequentialChain chain...
-  《三体人不是无法战胜的》
+  [1m> Entering new SimpleSequentialChain chain...[0m
+  [36;1m[1;3m
 
-  在这部戏剧中，人类和三体人之间的宿命对决将上演。人类社会面临着前所未有的威胁，来自宇宙深处的三体人族群。然而，当一名勇敢的人类探险家意外地发现了三体人的软肋，战局开始发生转变。随着剧情的推进，观众将被带入一场超越时空和文明的较量，探索智慧和勇气对抗力量的力量。这部戏剧将探讨宇宙间的复杂关系，以及在最黑暗的时刻，人类如何挺身而出，证明三体人并非无法战胜。
-  《三体人不是无法战胜的》：一场人类与三体人的宿命对决
+  《三体人不是无法战胜的》讲述了一个关于人类和外星种族三体人的故事。在未来，人类发现了一颗宇宙中心的星球，它被称为三体世界，这里的生物拥有超强的科技能力和不可思议的智慧。人类与三体人开始了一场殊死的战争，双方都想要摧毁对方，但是随着战争的进行，人类发现三体人并非无法战胜。随着故事的发展，人类和三体人之间的关系变得复杂起来，他们开始思考战争的意义和自己的生存。最终，人类和三体人达成了和解，并共同面对更大的威胁。这部戏剧探讨了战争、和平、智慧和生存的主题，带给观众深刻的思考。[0m
+  [33;1m[1;3m
 
-  在这部引人入胜的戏剧中，我们被带入了一场跨越时空和文明的较量，探索智慧和勇气对抗力量的壮举。人类社会面临着前所未有的挑战，来自宇宙深处的三体人族群对地球构成了极大的威胁。然而，正当一切看似毫无希望之际，一名勇敢的人类探险家意外地发现了三体人的软肋，这一发现让战局出现了意想不到的变化。
+  《三体人不是无法战胜的》是一部令人印象深刻的戏剧作品，它以宏大的宇宙背景为舞台，探讨了人类和外星种族三体人之间的关系。该剧引人入胜的剧情和深刻的主题，让观众在观看的同时也深思人类的未来和我们对战争的理解。
 
-  这部戏剧不仅仅是一场科幻戏剧，它更是一次关于人类意志与勇气的深刻探索。剧中所呈现的复杂关系和角色之间的心理挣扎，使观众在观剧过程中深受触动。通过人类与三体人之间的对抗，我们看到了智慧和勇气在最黑暗的时刻的闪耀。
+  剧中，人类发现了超强科技能力和智慧的三体世界，展开了一场殊死的战争。然而，随着战争的进行，人类发现三体人并非无法战胜，这让他们开始思考战争的意义和自身的生存。剧中角色的复杂性和演员们精湛的表演，让观众不仅仅是被动的观看，而是被带入到故事中去，和角色一起思考。
 
-  导演和演员们通过精湛的表演，将剧中角色的内心世界展现得淋漓尽致。他们的演技不仅令人信服，更让观众对剧情的发展产生了强烈的共鸣。
+  该剧还探讨了和平、智慧和生存的主题。通过人类和三体人之间的对话和互动，观众可以深刻感受到战争对人类的影响，以及和平对人类的重要性。同时，剧中展现的三体人的智慧和科技能力也让观众反思人类的未来发展方向。
 
-  虽然剧情设定在未来的宇宙中，但其中蕴含的人性之美和智慧的力量却与我们当下的世界息息相关。在这个充满挑战和不确定性的时代，这部戏剧为我们提供了一种力量的启示：即使面对最强大的敌人，人类也能够以智慧和勇气战胜一切。
+  最终，人类和三体人达成了和解，并共同面对更大的威胁。这种宽容和团结的态度，也让观众感受到戏剧中蕴含的积极向上的力量。
 
-  总的来说，《三体人不是无法战胜的》是一部令人振奋的戏剧作品，它引领观众穿越时空，感受人类意志的坚韧和勇气的伟大。这是一部不容错过的戏剧，必将成为舞台艺术的经典之作。
+  总的来说，《三体人不是无法战胜的》是一部充满智慧和思考的戏剧作品。它不仅仅是一场娱乐，更是一次关于人类未来和和平的思考之旅。观众们在欣赏剧中精彩的表演的同时，也会被带入到深思的境界中。这部戏剧绝对值得观看。[0m
 
-  > Finished chain.
+  [1m> Finished chain.[0m
 #+end_example
 
 #+begin_src jupyter-python
@@ -316,44 +322,44 @@ LLMChain 是 LangChain 中最简单的链，作为其他复杂 Chains 和 Agents
 #+end_src
 
 #+RESULTS:
-:RESULTS:
 #+begin_example
-  /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages/langchain_core/_api/deprecation.py:119: LangChainDeprecationWarning: The method `Chain.__call__` was deprecated in langchain 0.1.0 and will be removed in 0.3.0. Use invoke instead.
-    warn_deprecated(
 
 
-  > Entering new SequentialChain chain...
+  [1m> Entering new SequentialChain chain...[0m
 
 
-  > Entering new LLMChain chain...
+  [1m> Entering new LLMChain chain...[0m
   Prompt after formatting:
-  你是一位剧作家。根据戏剧的标题和设定的时代，你的任务是为该标题写一个简介。
+  [32;1m[1;3m你是一位剧作家。根据戏剧的标题和设定的时代，你的任务是为该标题写一个简介。
 
   标题：三体人不是无法战胜的
   时代：二十一世纪的新中国
-  剧作家：以下是对上述戏剧的简介：
+  剧作家：以下是对上述戏剧的简介：[0m
 
-  > Finished chain.
+  [1m> Finished chain.[0m
 
 
-  > Entering new LLMChain chain...
+  [1m> Entering new LLMChain chain...[0m
   Prompt after formatting:
-  你是《纽约时报》的戏剧评论家。根据该剧的剧情简介，你需要撰写一篇关于该剧的评论。
+  [32;1m[1;3m你是《纽约时报》的戏剧评论家。根据该剧的剧情简介，你需要撰写一篇关于该剧的评论。
 
   剧情简介：
-  在二十一世纪的新中国，人类面临着一场前所未有的挑战：地球上突然出现了一批来自三体星系的外星人。他们以惊人的科技和超越人类理解的智慧，威胁着人类的生存。然而，在这个挑战面前，人类展现出了无与伦比的勇气和智慧。《三体人不是无法战胜的》讲述了在这场宇宙之战中，人类面对未知与困境时的坚韧和拼搏，以及他们与外星文明之间的角力与对抗。这部戏剧将带领观众穿越时空，探索人类勇气与智慧的辉煌光芒，以及对未知世界的探索与挑战。
 
-  来自《纽约时报》戏剧评论家对上述剧目的评价：
 
-  > Finished chain.
+  在二十一世纪的新中国，一场前所未有的危机降临到了人类的头上。一群来自外星的三体人入侵地球，他们拥有超强的科技和战斗力，让人类陷入了绝境。然而，面对这样的敌人，人类并没有束手待毙，他们团结一心，凭借着自己的智慧和勇气，展开了一场生死搏斗。
 
-  > Finished chain.
+  在这场战争中，人类的科学家们发挥着重要的作用，他们研究三体人的科技，试图找到对抗他们的方法。同时，一位年轻的女科学家也在这次危机中发挥着至关重要的作用，她不仅在研究中发现了三体人的弱点，还带领着人类战士们勇敢地与三体人作战。
+
+  在战争的过程中，人类也发现了三体人的弱点并不只是他们的科技，还有着他们内心的软弱。随着战争的进行，人类开始反思自己，思考与三体人和平共处的可能性。最终，在经历了一系列的挑战和考验后，人类不仅战胜了三体人，也找到了与他们和平共处的方法。
+
+  这部戏剧讲述了人类在面对强大的外敌时的勇气和智慧，也反映了人类的内心世界和对和平的渴望。它告诉我们，在困难的时刻，团结一心，勇敢地面对挑战，人类是无法被击败的。同时，它也向我们展示了一种可能，即不同种族之间可以和平共处，而不是仅仅通过战争来解决问题。让我们一起感受这场关于勇气、智慧和和平的戏剧，一起探索人类的未来。
+
+  来自《纽约时报》戏剧评论家对上述剧目的评价：[0m
+
+  [1m> Finished chain.[0m
+
+  [1m> Finished chain.[0m
 #+end_example
-| title | : | 三体人不是无法战胜的 | era | : | 二十一世纪的新中国 | synopsis | : | 在二十一世纪的新中国，人类面临着一场前所未有的挑战：地球上突然出现了一批来自三体星系的外星人。他们以惊人的科技和超越人类理解的智慧，威胁着人类的生存。然而，在这个挑战面前，人类展现出了无与伦比的勇气和智慧。《三体人不是无法战胜的》讲述了在这场宇宙之战中，人类面对未知与困境时的坚韧和拼搏，以及他们与外星文明之间的角力与对抗。这部戏剧将带领观众穿越时空，探索人类勇气与智慧的辉煌光芒，以及对未知世界的探索与挑战。 | review | : | 《三体人不是无法战胜的》是一部极具震撼力和深度的戏剧作品，它不仅令人目不转睛地关注着宇宙间的巨大冲突，更是一次对人类勇气和智慧的赞颂。\n\n在这个故事中，我们被引领进入一个异想天开的世界，一个被外星文明入侵威胁的未来。但正是在这种威胁之下，人类所展现出的坚韧与拼搏，才真正凸显出了其无与伦比的力量。这不仅仅是一场关于科技与智慧的较量，更是一次对人性的审视和探索。\n\n剧中角色的塑造也是令人瞩目的。他们不仅仅是戏剧人物，更是象征着人类面对未知和困境时的反应。他们的内心挣扎、勇敢面对以及最终的成长，都将观众带入了一个情感丰富、思想深刻的旅程中。\n\n此外，剧中对未知世界的探索与挑战也是引人入胜的。通过时空穿梭和外星文明的对抗，观众不仅仅是在追随角色的脚步，更是在探索人类文明的辉煌与脆弱，以及面对未知时的无尽可能性。\n\n总的来说，《三体人不是无法战胜的》不仅是一部引人入胜的科幻戏剧，更是一次对人类勇气与智慧的赞美，以及对未知世界的探索与思考。它不仅仅是一场娱乐，更是一次心灵的洗礼和启迪。 |
-:END:
 
 ** Homework
 *** 使用 OutputParser 优化 overall_chain 输出格式，区分 synopsis_chain 和 review_chain 的结果
-
-#+begin_src jupyter-python
-#+end_src

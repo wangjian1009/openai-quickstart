@@ -1,0 +1,261 @@
+#+TITLE: LangChain 核心模块 - Chat Model 和 Chat Prompt Template
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-Translator02-chain :display text/plain
+
+希望通过此示例，让大家深入理解 LangChain 的聊天模型。简而言之：
+
+- =Chat Model= ::
+  不止是一个用于聊天对话的模型抽象，更重要的是提供了=多角色=提示能力（System,AI,Human,Function)。
+- =Chat Prompt Template= ::
+  则为开发者提供了便捷维护=不同角色=的=提示模板=与=消息记录=的接口。
+
+#+ATTR_ORG: :width 800
+[[../../jupyter/images/model_io.jpeg]]
+
+* 温故：LangChain Chat Model 使用方法和流程
+在最终调用 =Chat Model= 时，一定是直接传入 =LangChain Schema Messages（消息记录）=
+
+#+begin_src jupyter-python
+  from langchain_openai import ChatOpenAI
+  chat_model = ChatOpenAI(model_name="gpt-3.5-turbo", base_url='https://api.xty.app/v1')
+
+  from langchain.schema import (
+      AIMessage,
+      HumanMessage,
+      SystemMessage
+  )
+
+  messages = [SystemMessage(content="You are a helpful assistant."),
+   HumanMessage(content="Who won the world series in 2020?"),
+   AIMessage(content="The Los Angeles Dodgers won the World Series in 2020."), 
+   HumanMessage(content="Where was it played?")]
+
+  print(messages)
+
+  chat_model(messages)
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+: [SystemMessage(content='You are a helpful assistant.'), HumanMessage(content='Who won the world series in 2020?'), AIMessage(content='The Los Angeles Dodgers won the World Series in 2020.'), HumanMessage(content='Where was it played?')]
+: AIMessage(content='The 2020 World Series was played at Globe Life Field in Arlington, Texas.', response_metadata={'token_usage': {'completion_tokens': 17, 'prompt_tokens': 53, 'total_tokens': 70}, 'model_name': 'gpt-3.5-turbo', 'system_fingerprint': '', 'finish_reason': 'stop', 'logprobs': None}, id='run-50764744-02bb-4aa4-8c7a-310113572b4b-0')
+:END:
+
+色的提示模板构造 ChatPromptTemplate 使用 =ChatPromptTemplate.from_messages= 方法，类似使用和维护=messages=的方式，构造 =chat_prompt_template=
+
+#+begin_src jupyter-python :results none
+  from langchain.schema import AIMessage, HumanMessage, SystemMessage
+  # 导入 Chat Model 即将使用的 Prompt Templates
+  from langchain.prompts.chat import (
+      ChatPromptTemplate,
+      SystemMessagePromptTemplate,
+      AIMessagePromptTemplate,
+      HumanMessagePromptTemplate,
+  )
+
+  # 翻译任务指令始终由 System 角色承担
+  template = (
+      """You are a translation expert, proficient in various languages. \n
+      Translates English to Chinese."""
+  )
+  system_message_prompt = SystemMessagePromptTemplate.from_template(template)
+#+end_src
+
+#+begin_src jupyter-python
+  print(system_message_prompt)
+#+end_src
+
+#+RESULTS:
+: prompt=PromptTemplate(input_variables=[], template='You are a translation expert, proficient in various languages. \n\n    Translates English to Chinese.')
+
+#+begin_src jupyter-python :results none
+  # 待翻译文本由 Human 角色输入
+  human_template = "{text}"
+  human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+#+end_src
+
+#+begin_src jupyter-python
+  print(human_message_prompt)
+#+end_src
+
+#+RESULTS:
+: prompt=PromptTemplate(input_variables=['text'], template='{text}')
+
+#+begin_src jupyter-python :results none
+  # 使用 System 和 Human 角色的提示模板构造 ChatPromptTemplate
+  chat_prompt_template = ChatPromptTemplate.from_messages(
+      [system_message_prompt, human_message_prompt]
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  print(chat_prompt_template)
+#+end_src
+
+#+RESULTS:
+: input_variables=['text'] messages=[SystemMessagePromptTemplate(prompt=PromptTemplate(input_variables=[], template='You are a translation expert, proficient in various languages. \n\n    Translates English to Chinese.')), HumanMessagePromptTemplate(prompt=PromptTemplate(input_variables=['text'], template='{text}'))]
+
+** 规范化 Python 复杂对象
+- 使用在线工具 [[https://codebeautify.org/python-formatter-beautifier][Python Formatter]]
+- 规范化 =chat_prompt_template= 后再查看
+- 注意：不要同事输入多个复杂对象
+
+#+begin_src jupyter-python :eval no
+  messages = [
+      SystemMessagePromptTemplate(
+          prompt=PromptTemplate(
+              input_variables=[],
+              output_parser=None,
+              partial_variables={},
+              template="You are a translation expert, proficient in various languages. \n\n    Translates English to Chinese.",
+              template_format="f-string",
+              validate_template=True,
+          ),
+          additional_kwargs={},
+      ),
+      HumanMessagePromptTemplate(
+          prompt=PromptTemplate(
+              input_variables=["text"],
+              output_parser=None,
+              partial_variables={},
+              template="{text}",
+              template_format="f-string",
+              validate_template=True,
+          ),
+          additional_kwargs={},
+      ),
+  ]
+#+end_src
+
+#+begin_src jupyter-python
+  # 生成用于翻译的 Chat Prompt
+  chat_prompt_template.format_prompt(text="I love programming.")
+#+end_src
+
+#+RESULTS:
+: ChatPromptValue(messages=[SystemMessage(content='You are a translation expert, proficient in various languages. \n\n    Translates English to Chinese.'), HumanMessage(content='I love programming.')])
+
+* 使用 chat_prompt_template.to_messages 方法生成 Messages
+#+begin_src jupyter-python :results none
+  # 生成聊天模型真正可用的消息记录 Messages
+  chat_prompt = chat_prompt_template.format_prompt(text="I love programming.").to_messages()
+#+end_src
+
+#+begin_src jupyter-python
+  print(chat_prompt)
+#+end_src
+
+#+RESULTS:
+: [SystemMessage(content='You are a translation expert, proficient in various languages. \n\n    Translates English to Chinese.'), HumanMessage(content='I love programming.')]
+
+* 使用 Chat Model（GPT-3.5-turbo）实际执行翻译任务
+#+begin_src jupyter-python :results none
+  # 为了翻译结果的稳定性，将 temperature 设置为 0
+  translation_model = ChatOpenAI(model_name="gpt-3.5-turbo", temperature=0, base_url='https://api.xty.app/v1')
+#+end_src
+
+#+begin_src jupyter-python :results none
+  translation_result = translation_model(chat_prompt)
+#+end_src
+
+#+begin_src jupyter-python
+  translation_result
+#+end_src
+
+#+RESULTS:
+: AIMessage(content='我热爱编程。', response_metadata={'token_usage': {'completion_tokens': 9, 'prompt_tokens': 34, 'total_tokens': 43}, 'model_name': 'gpt-3.5-turbo', 'system_fingerprint': '', 'finish_reason': 'stop', 'logprobs': None}, id='run-fe3972e8-6037-4f8b-b402-d79f2fff01cf-0')
+
+#+begin_src jupyter-python
+  # 查看翻译结果
+  print(translation_result.content)
+#+end_src
+
+#+RESULTS:
+: 我热爱编程。
+
+* 使用 LLMChain 简化重复构造 ChatPrompt
+#+begin_src jupyter-python :results none
+  from langchain.chains import LLMChain
+
+  # 无需再每次都使用 to_messages 方法构造 Chat Prompt
+  translation_chain = LLMChain(llm=translation_model, prompt=chat_prompt_template)
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 等价于 translation_result.content (字符串类型)
+  chain_result = translation_chain.run({'text': "I love programming."})
+#+end_src
+
+#+begin_src jupyter-python
+  print(chain_result)
+#+end_src
+
+#+RESULTS:
+: 我喜欢编程。
+
+#+begin_src jupyter-python
+  translation_chain.run({'text': "I love AI and Large Language Model."})
+#+end_src
+
+#+RESULTS:
+: 我喜欢人工智能和大语言模型。
+
+#+begin_src jupyter-python
+  translation_chain.run({'text': "[Fruit, Color, Price (USD)] [Apple, Red, 1.20] [Banana, Yellow, 0.50] [Orange, Orange, 0.80] [Strawberry, Red, 2.50] [Blueberry, Blue, 3.00] [Kiwi, Green, 1.00] [Mango, Orange, 1.50] [Grape, Purple, 2.00]"})
+#+end_src
+
+#+RESULTS:
+| 水果，颜色，价格（美元） |
+
+* 扩展：支持多语言对翻译
+#+begin_src jupyter-python :results none
+  # System 增加 source_language 和 target_language
+  template = (
+      """You are a translation expert, proficient in various languages. \n
+      Translates {source_language} to {target_language}."""
+  )
+  system_message_prompt = SystemMessagePromptTemplate.from_template(template)
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 待翻译文本由 Human 角色输入
+  human_template = "{text}"
+  human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 使用 System 和 Human 角色的提示模板构造 ChatPromptTemplate
+  m_chat_prompt_template = ChatPromptTemplate.from_messages(
+      [system_message_prompt, human_message_prompt]
+  )
+#+end_src
+
+#+begin_src jupyter-python :results none
+  m_translation_chain = LLMChain(llm=translation_model, prompt=m_chat_prompt_template) 
+#+end_src
+
+#+begin_src jupyter-python
+  m_translation_chain.run({
+      "source_language": "Chinese",
+      "target_language": "English",
+      "text": "我喜欢学习大语言模型，轻松简单又愉快",
+  })
+#+end_src
+
+#+RESULTS:
+: "I enjoy studying large language models, it's easy, simple, and fun."
+
+#+begin_src jupyter-python
+  m_translation_chain.run({
+      "source_language": "Chinese",
+      "target_language": "Japanese",
+      "text": "我喜欢学习大语言模型，轻松简单又愉快",
+  })
+#+end_src
+
+#+RESULTS:
+: 私は大規模言語モデルの学習が好きです。軽やかで簡単で楽しいです。
+
+* Homework
+- 尝试不同的 System Prompt 和 Chat Model，对比翻译效果。
+- 根据翻译任务的使用场景，是否可以在初次传入 ~source_language~ 和 ~target_language~ 后不再更新？

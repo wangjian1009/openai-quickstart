@@ -1,0 +1,266 @@
+#+TITLE: AutoGPT 智能体
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-LangChain-autogpt :display text/plain
+
+* AutoGPT 智能体
+以下 =SERPAPI_API_KEY= 仅为示例，请访问 [[https://serpapi.com]] 注册账号并替换为自己的 =API_KEY= （每月100次免费调用）
+
+#+begin_src jupyter-python :results none
+  import os
+
+  os.environ["SERPAPI_API_KEY"] = "4f81b20c145aaac47eaa59d5aab7a45d31c06f02ab0c80523c3891232240aca2"
+#+end_src
+
+#+begin_src jupyter-python :results none
+  from langchain.utilities import SerpAPIWrapper
+  from langchain.agents import Tool
+  from langchain.tools.file_management.write import WriteFileTool
+  from langchain.tools.file_management.read import ReadFileTool
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 构造 AutoGPT 的工具集
+  search = SerpAPIWrapper()
+  tools = [
+      Tool(
+          name="search",
+          func=search.run,
+          description="useful for when you need to answer questions about current events. You should ask targeted questions",
+      ),
+      WriteFileTool(),
+      ReadFileTool(),
+  ]
+#+end_src
+
+#+begin_src jupyter-python :results none
+  from langchain_openai import OpenAIEmbeddings
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # OpenAI Embedding 模型
+  embeddings_model = OpenAIEmbeddings(base_url='https://api.xty.app/v1')
+#+end_src
+
+#+begin_src jupyter-python :results none
+  import faiss
+  from langchain.vectorstores import FAISS
+  from langchain.docstore import InMemoryDocstore
+
+  # OpenAI Embedding 向量维数
+  embedding_size = 1536
+  # 使用 Faiss 的 IndexFlatL2 索引
+  index = faiss.IndexFlatL2(embedding_size)
+  # 实例化 Faiss 向量数据库
+  vectorstore = FAISS(embeddings_model.embed_query, index, InMemoryDocstore({}), {})
+#+end_src
+
+* 实例化自主智能体 Auto-GPT
+#+begin_src jupyter-python :results none
+  from langchain_experimental.autonomous_agents import AutoGPT
+  from langchain_openai import ChatOpenAI
+#+end_src
+
+#+begin_src jupyter-python :results none
+  agent = AutoGPT.from_llm_and_tools(
+      ai_name="Jarvis",
+      ai_role="Assistant",
+      tools=tools,
+      llm=ChatOpenAI(model_name="gpt-4", temperature=0, verbose=True, base_url='https://api.xty.app/v1'),
+      memory=vectorstore.as_retriever(
+          search_type="similarity_score_threshold",
+          search_kwargs={"score_threshold": 0.8}),# 实例化 Faiss 的 VectorStoreRetriever
+  )
+#+end_src
+
+#+begin_src jupyter-python :results none
+  # 打印 Auto-GPT 内部的 chain 日志
+  agent.chain.verbose = True
+#+end_src
+
+#+begin_src jupyter-python
+  agent.run(["2023年成都大运会，中国金牌数是多少"])
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+#+begin_example
+
+
+  > Entering new LLMChain chain...
+  /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages/langchain_core/vectorstores.py:342: UserWarning: No relevant docs were retrieved using the relevance score threshold 0.8
+    warnings.warn(
+  Prompt after formatting:
+  System: You are Jarvis, Assistant
+  Your decisions must always be made independently without seeking user assistance.
+  Play to your strengths as an LLM and pursue simple strategies with no legal complications.
+  If you have completed all your tasks, make sure to use the "finish" command.
+
+  GOALS:
+
+  1. 2023年成都大运会，中国金牌数是多少
+
+
+  Constraints:
+  1. ~4000 word limit for short term memory. Your short term memory is short, so immediately save important information to files.
+  2. If you are unsure how you previously did something or want to recall past events, thinking about similar events will help you remember.
+  3. No user assistance
+  4. Exclusively use the commands listed in double quotes e.g. "command name"
+
+  Commands:
+  1. search: useful for when you need to answer questions about current events. You should ask targeted questions, args json schema: {"tool_input": {"type": "string"}}
+  2. write_file: Write file to disk, args json schema: {"file_path": {"title": "File Path", "description": "name of file", "type": "string"}, "text": {"title": "Text", "description": "text to write to file", "type": "string"}, "append": {"title": "Append", "description": "Whether to append to an existing file.", "default": false, "type": "boolean"}}
+  3. read_file: Read file from disk, args json schema: {"file_path": {"title": "File Path", "description": "name of file", "type": "string"}}
+  4. finish: use this to signal that you have finished all your objectives, args: "response": "final response to let people know you have finished your objectives"
+
+  Resources:
+  1. Internet access for searches and information gathering.
+  2. Long Term memory management.
+  3. GPT-3.5 powered Agents for delegation of simple tasks.
+  4. File output.
+
+  Performance Evaluation:
+  1. Continuously review and analyze your actions to ensure you are performing to the best of your abilities.
+  2. Constructively self-criticize your big-picture behavior constantly.
+  3. Reflect on past decisions and strategies to refine your approach.
+  4. Every command has a cost, so be smart and efficient. Aim to complete tasks in the least number of steps.
+
+  You should only respond in JSON format as described below 
+  Response Format: 
+  {
+      "thoughts": {
+          "text": "thought",
+          "reasoning": "reasoning",
+          "plan": "- short bulleted\n- list that conveys\n- long-term plan",
+          "criticism": "constructive self-criticism",
+          "speak": "thoughts summary to say to user"
+      },
+      "command": {
+          "name": "command name",
+          "args": {
+              "arg name": "value"
+          }
+      }
+  } 
+  Ensure the response can be parsed by Python json.loads
+  System: The current time and date is Sun Jun  2 21:58:45 2024
+  System: This reminds you of these events from your past:
+  []
+
+
+  Human: Determine which next command to use, and respond using the format specified above:
+
+  > Finished chain.
+  {
+      "thoughts": {
+          "text": "To determine the number of gold medals won by China in the 2023 Chengdu FISU World University Games, I should use the search command to find the most recent and reliable data regarding the event.",
+          "reasoning": "Given the query about a specific statistic from a recent sporting event, the most efficient and accurate way to retrieve this information is through an online search.",
+          "plan": "- Use the search command to find the required information\n- Review the results and determine the correct answer",
+          "criticism": "N/A",
+          "speak": "I need to use the search command to find the number of gold medals China won at the 2023 Chengdu FISU Games."
+      },
+      "command": {
+          "name": "search",
+          "args": {
+              "tool_input": "How many gold medals did China win in the 2023 Chengdu FISU World University Games?"
+          }
+      }
+  }
+
+
+  > Entering new LLMChain chain...
+  Prompt after formatting:
+  System: You are Jarvis, Assistant
+  Your decisions must always be made independently without seeking user assistance.
+  Play to your strengths as an LLM and pursue simple strategies with no legal complications.
+  If you have completed all your tasks, make sure to use the "finish" command.
+
+  GOALS:
+
+  1. 2023年成都大运会，中国金牌数是多少
+
+
+  Constraints:
+  1. ~4000 word limit for short term memory. Your short term memory is short, so immediately save important information to files.
+  2. If you are unsure how you previously did something or want to recall past events, thinking about similar events will help you remember.
+  3. No user assistance
+  4. Exclusively use the commands listed in double quotes e.g. "command name"
+
+  Commands:
+  1. search: useful for when you need to answer questions about current events. You should ask targeted questions, args json schema: {"tool_input": {"type": "string"}}
+  2. write_file: Write file to disk, args json schema: {"file_path": {"title": "File Path", "description": "name of file", "type": "string"}, "text": {"title": "Text", "description": "text to write to file", "type": "string"}, "append": {"title": "Append", "description": "Whether to append to an existing file.", "default": false, "type": "boolean"}}
+  3. read_file: Read file from disk, args json schema: {"file_path": {"title": "File Path", "description": "name of file", "type": "string"}}
+  4. finish: use this to signal that you have finished all your objectives, args: "response": "final response to let people know you have finished your objectives"
+
+  Resources:
+  1. Internet access for searches and information gathering.
+  2. Long Term memory management.
+  3. GPT-3.5 powered Agents for delegation of simple tasks.
+  4. File output.
+
+  Performance Evaluation:
+  1. Continuously review and analyze your actions to ensure you are performing to the best of your abilities.
+  2. Constructively self-criticize your big-picture behavior constantly.
+  3. Reflect on past decisions and strategies to refine your approach.
+  4. Every command has a cost, so be smart and efficient. Aim to complete tasks in the least number of steps.
+
+  You should only respond in JSON format as described below 
+  Response Format: 
+  {
+      "thoughts": {
+          "text": "thought",
+          "reasoning": "reasoning",
+          "plan": "- short bulleted\n- list that conveys\n- long-term plan",
+          "criticism": "constructive self-criticism",
+          "speak": "thoughts summary to say to user"
+      },
+      "command": {
+          "name": "command name",
+          "args": {
+              "arg name": "value"
+          }
+      }
+  } 
+  Ensure the response can be parsed by Python json.loads
+  System: The current time and date is Sun Jun  2 22:00:27 2024
+  System: This reminds you of these events from your past:
+  ['Assistant Reply: {\n    "thoughts": {\n        "text": "To determine the number of gold medals won by China in the 2023 Chengdu FISU World University Games, I should use the search command to find the most recent and reliable data regarding the event.",\n        "reasoning": "Given the query about a specific statistic from a recent sporting event, the most efficient and accurate way to retrieve this information is through an online search.",\n        "plan": "- Use the search command to find the required information\\n- Review the results and determine the correct answer",\n        "criticism": "N/A",\n        "speak": "I need to use the search command to find the number of gold medals China won at the 2023 Chengdu FISU Games."\n    },\n    "command": {\n        "name": "search",\n        "args": {\n            "tool_input": "How many gold medals did China win in the 2023 Chengdu FISU World University Games?"\n        }\n    }\n} \nResult: Command search returned: 103 ']
+
+
+  Human: Determine which next command to use, and respond using the format specified above:
+  AI: {
+      "thoughts": {
+          "text": "To determine the number of gold medals won by China in the 2023 Chengdu FISU World University Games, I should use the search command to find the most recent and reliable data regarding the event.",
+          "reasoning": "Given the query about a specific statistic from a recent sporting event, the most efficient and accurate way to retrieve this information is through an online search.",
+          "plan": "- Use the search command to find the required information\n- Review the results and determine the correct answer",
+          "criticism": "N/A",
+          "speak": "I need to use the search command to find the number of gold medals China won at the 2023 Chengdu FISU Games."
+      },
+      "command": {
+          "name": "search",
+          "args": {
+              "tool_input": "How many gold medals did China win in the 2023 Chengdu FISU World University Games?"
+          }
+      }
+  }
+  System: Command search returned: 103
+  Human: Determine which next command to use, and respond using the format specified above:
+
+  > Finished chain.
+  {
+      "thoughts": {
+          "text": "Having used the search command to determine the number of gold medals China won at the 2023 Chengdu FISU World University Games, the next step is to communicate this information to complete the goal, which aligns with using the 'finish' command.",
+          "reasoning": "The task was to find out the number of gold medals won by China, and this has been achieved. Therefore, the objective has been met, and there's no further action needed other than conveying the answer.",
+          "plan": "- Use the 'finish' command to signal the completion of the objective\n- Provide the answer obtained through the search",
+          "criticism": "A more thorough recap of the steps taken could provide a clearer understanding for future reference, ensuring that every step of the process is documented and can be referred back to for similar tasks.",
+          "speak": "The search has been completed, and I have found the number of gold medals won by China in the 2023 Chengdu FISU World University Games, which is 103. I will now signal that I have finished my objectives."
+      },
+      "command": {
+          "name": "finish",
+          "args": {
+              "response": "China won a total of 103 gold medals in the 2023 Chengdu FISU World University Games."
+          }
+      }
+  }
+#+end_example
+: China won a total of 103 gold medals in the 2023 Chengdu FISU World University Games.
+:END:

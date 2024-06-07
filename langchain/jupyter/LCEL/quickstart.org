@@ -1,0 +1,320 @@
+#+TITLE: Langchain Expression Language（LCEL）快速入门
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-LangChain-LCEL-quickstart :display text/plain
+
+* Langchain Expression Language（LCEL）快速入门
+*LCEL是一种声明式的链式组合语言* ，能够从简单的=Prompt+LLM=链到复杂的链（运行100多个步骤的生产环境）。
+
+其设计初衷是支持将原型快速投入生产，而无需更改代码。
+
+LCEL使得从基本组件构建复杂链变得容易，并支持流式处理、并行处理和日志记录等开箱即用的功能。
+
+** 组件
+我们已学习的组件包括以下模块：
+
+*** 📃 Model I/O：
+这包括提示管理，提示优化，用于聊天模型和LLM的通用接口，以及处理模型输出的常见实用工具。
+
+*** 📚 Retrieval：
+检索增强生成涉及从各种来源加载数据，准备数据，然后在生成步骤中检索数据以供使用。
+
+*** 🤖 Agents：
+Agents 允许LLM自主完成任务。
+Agents会决定采取哪些行动，然后执行该行动，并观察结果，并重复此过程直到任务完成。
+LangChain为代理提供了标准接口、可选择的代理列表以及端到端代理示例。
+
+** 使用 LCEL 实现 LLMChain（Prompt + LLM)
+*** Pipe 管道操作符
+我们使用LCEL的 =|= 操作符将这些不同组件拼接成一个单一链。
+
+*在这个链中，用户输入被传递到提示模板，然后提示模板的输出被传递到模型，接着模型的输出被传递到输出解析器。*
+
+#+begin_src python :eval no
+  chain = prompt | model | output_parser
+#+end_src
+
+竖线符号类似于Unix管道操作符，它将不同的组件链接在一起，将一个组件的输出作为下一个组件的输入。
+
+** 软件依赖版本
+本指南使用的 LangChain 及相关软件版本如下：
+
+#+begin_src shell :results output raw
+  pip show langchain-core langchain-community langchain-openai
+#+end_src
+
+#+RESULTS:
+Name: langchain-core
+Version: 0.2.0
+Summary: Building applications with LLMs through composability
+Home-page: https://github.com/langchain-ai/langchain
+Author: 
+Author-email: 
+License: MIT
+Location: /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages
+Requires: jsonpatch, langsmith, packaging, pydantic, PyYAML, tenacity
+Required-by: langchain, langchain-chroma, langchain-community, langchain-experimental, langchain-openai, langchain-text-splitters
+---
+Name: langchain-community
+Version: 0.2.1
+Summary: Community contributed LangChain integrations.
+Home-page: https://github.com/langchain-ai/langchain
+Author: 
+Author-email: 
+License: MIT
+Location: /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages
+Requires: aiohttp, dataclasses-json, langchain, langchain-core, langsmith, numpy, PyYAML, requests, SQLAlchemy, tenacity
+Required-by: langchain-experimental
+---
+Name: langchain-openai
+Version: 0.1.7
+Summary: An integration package connecting OpenAI and LangChain
+Home-page: https://github.com/langchain-ai/langchain
+Author: 
+Author-email: 
+License: MIT
+Location: /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages
+Requires: langchain-core, openai, tiktoken
+Required-by: 
+
+#+begin_src jupyter-python
+  from langchain_openai import ChatOpenAI
+  from langchain_core.output_parsers import StrOutputParser
+  from langchain_core.prompts import ChatPromptTemplate
+
+  # 初始化 ChatOpenAI 模型，指定使用的模型为 'gpt-3.5-turbo-0125'
+  model = ChatOpenAI(model="gpt-3.5-turbo-0125", base_url='https://api.xty.app/v1')
+
+  # 创建一个聊天提示模板，设置模板内容为"讲个关于 {topic} 的笑话吧"
+  prompt = ChatPromptTemplate.from_template("讲个关于 {topic} 的笑话吧")
+
+  # 初始化输出解析器，用于将模型的输出转换为字符串
+  output_parser = StrOutputParser()
+
+  # 构建一个处理链，先通过提示模板生成完整的输入，然后通过模型处理，最后解析输出
+  chain = prompt | model | output_parser
+
+  # 调用处理链，传入主题为"程序员"，生成关于程序员的笑话
+  chain.invoke({"topic": "程序员"})
+#+end_src
+
+#+RESULTS:
+: 当然，这是一个经典的程序员笑话：\n\n程序员走进一家酒吧，服务员问道：“你想要喝点什么？” \n\n程序员回答说：“一杯水吧。” \n\n服务员问：“为什么不喝点酒？” \n\n程序员笑着说：“因为喝酒后我就变成了一个 'bug' 程序员！”
+
+* 核心概念：invoke 方法
+Langchain =invoke= 方法是 LCEL 设计中的重要方法，可以帮助开发者更高效地处理复杂任务，结合语言模型进行系统构建，实现不同数据源和API的接口对接。
+
+** 基础概念
+- 在Langchain中，invoke方法是所有LangChain表达式语言（LCEL）对象的通用同步调用方法。通过invoke方法，开发者可以直接调用LLM或ChatModel，简化了调用流程，提高了开发效率。
+- 与其他链式调用方法相比，invoke方法更加灵活便捷，可以直接对输入进行调用，而不需要额外的链式操作。相对于batch和stream等异步方法，invoke方法更适用于单一操作的执行。
+
+** 使用方式
+- 单次调用：通过invoke方法，开发者可以快速对单一操作进行执行，例如转换ChatMessage为Python字符串等简单操作，提升了代码的可读性和整洁度。
+- 复杂协作：Langchain的核心理念就是将语言模型作为协作工具，invoke方法可以很好地实现开发者与语言模型的高效互动，构建出处理复杂任务的系统，并对接不同的数据源和API接口。
+
+* invoke 与 Model I/O 的结合
+整个流程按照以下步骤进行：
+
+1. =Prompt= 组件接收用户输入 *{"topic": "程序员"}*，然后使用该 topic 构建 =PromptValue=
+2. =Model= 组件获取生成的提示，并传递给 GPT-3.5-Turbo 模型进行评估。从模型生成的输出是一个ChatMessage对象。
+3. 最后， =output_parser= 组件接收ChatMessage，并将其转换为Python字符串，在invoke方法中返回。
+
+** Prompt
+=prompt= 是 =BasePromptTemplate= 的实例，这意味着它接受模板变量的字典并生成一个 =PromptValue= 。
+
+PromptValue是一个包装器(wrapper)，围绕完成的提示进行操作，可以传递给LLM（以字符串作为输入）或ChatModel（以消息序列作为输入）。
+
+它可以与任何语言模型类型一起使用，因为它定义了生成=BaseMessages=和生成字符串的逻辑。
+
+#+begin_src python
+  from langchain import PromptTemplate
+
+  # Prompt 非 LCEL 使用方法
+  prompt_template = PromptTemplate.from_template(
+      "讲个关于 {topic} 的笑话吧"
+  )
+
+  # 使用 format 生成提示
+  prompt = prompt_template.format(topic="程序员")
+  print(prompt)
+#+end_src
+
+#+RESULTS:
+: 讲个关于 程序员 的笑话吧
+
+#+begin_src jupyter-python
+  # 调用 Prompt 的 invoke 方法生成最终的提示词
+  prompt_value = prompt.invoke({"topic": "程序员"})
+  prompt_value
+#+end_src
+
+#+RESULTS:
+: ChatPromptValue(messages=[HumanMessage(content='讲个关于 程序员 的笑话吧')])
+
+** Model
+然后调用模型的 =invoke= 方法，将 =PromptValue= 传递给模型。
+
+我们使用的 =GPT-3.5-turbo= 模型是 ChatModel，invoke 方法将返回 BaseMessage 。
+
+#+begin_src jupyter-python :results none
+  message = model.invoke(prompt_value)
+#+end_src
+
+#+begin_src jupyter-python
+  message
+#+end_src
+
+#+RESULTS:
+: AIMessage(content="当然，这是一个 did the programmer quit his job? Because he didn't get arrays of satisfaction!\n\nImagine a scenario: a group of programmers gathered around a table cluttered with laptops and empty coffee cups. One", response_metadata={'token_usage': {'completion_tokens': 44, 'prompt_tokens': 22, 'total_tokens': 66}, 'model_name': 'gpt-3.5-turbo-0125', 'system_fingerprint': 'fp_b28b39ffa8', 'finish_reason': 'stop', 'logprobs': None}, id='run-d500a9cc-ce12-45a9-a71a-56e494fb5509-0')
+
+如果我们使用的是 LLM 模型 =gpt-3.5-turbo-instruct= ，invoke 方法就会返回字符串。
+
+#+begin_src jupyter-python
+  from langchain_openai import OpenAI
+
+  llm = OpenAI(model="gpt-3.5-turbo-instruct", base_url='https://api.xty.app/v1')
+  llm.invoke(prompt_value)
+#+end_src
+
+#+RESULTS:
+: 为什么程序员喜欢在海滩上散步呢？\n\n因为他们想看看shell脚本的shell。
+
+** Output Parser
+最后，我们将模型输出传递给 output_parser，它是一个 =BaseOutputParser= 示例，意味着它接受字符串或 BaseMessage 作为输入。
+
+本指南中使用的 =StrOutputParser= 示例将所有输入都转换为字符串格式。
+
+#+begin_src jupyter-python
+  # message 经过 StrOutputParser 处理，变为标准的字符串
+  output_parser.invoke(message)
+#+end_src
+
+#+RESULTS:
+: 当然，这是一个 did the programmer quit his job? Because he didn't get arrays of satisfaction!\n\nImagine a scenario: a group of programmers gathered around a table cluttered with laptops and empty coffee cups. One
+
+* Invoke 与 Retrieval 结合
+下面演示如何在经典的 RAG 场景中使用 invoke 方法。下面将使用 =|= 操作符实现更复杂的链式调用。
+
+#+begin_src python
+  chain = setup_and_retrieval | prompt | model | output_parser
+#+end_src
+
+为了解释这一点，我们首先可以看到上面的提示模板接受上下文和问题作为要替换在提示中的值。在构建提示模板之前，我们希望检索相关文件以及将它们包含在上下文中。
+
+作为初步步骤，我们已经设置了使用内存存储器的检索器，它可以根据查询检索文档。这也是一个可运行的组件，并且可以与其他组件链接在一起，但您也可以尝试单独运行它：
+
+整个流程如下：
+
+1. 首先创建一个包含两个条目(entries)的 =RunnableParallel= 对象 *setup_and_retrieval* 。
+   第一个条目 =context= 将包括检索器获取的文档结果。
+   第二个条目 =question= 将包含用户原始问题。
+   为了传递问题，我们使用 =RunnablePassthrough= 来复制这个条目。
+2. 将上一步中的字典提供给 =Prompt= 组件。然后，它接收用户输入（即问题）以及检索到的文档（即context），构建提示并输出 =PromptValue= 。
+3. =Model= 组件接受生成的提示，并传递给OpenAI =gpt-3.5-turbo-0125= 模型进行评估。模型生成的输出是一个ChatMessage对象。
+4. 最后， =output_parser= 组件接收ChatMessage，并将其转换为Python字符串，在调用方法中返回该字符串。
+
+** 软件依赖版本
+本指南使用的 LangChain 及相关软件版本如下：
+
+#+begin_src shell :results raw
+  pip show langchain docarray tiktoken
+#+end_src
+
+#+RESULTS:
+Name: langchain
+Version: 0.2.0
+Summary: Building applications with LLMs through composability
+Home-page: https://github.com/langchain-ai/langchain
+Author: 
+Author-email: 
+License: MIT
+Location: /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages
+Requires: aiohttp, dataclasses-json, langchain-core, langchain-text-splitters, langsmith, numpy, pydantic, PyYAML, requests, SQLAlchemy, tenacity
+Required-by: langchain-community
+---
+Name: tiktoken
+Version: 0.7.0
+Summary: tiktoken is a fast BPE tokeniser for use with OpenAI's models
+Home-page: 
+Author: Shantanu Jain
+Author-email: shantanu@openai.com
+License: MIT License
+
+Copyright (c) 2022 OpenAI, Shantanu Jain
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+Location: /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages
+Requires: regex, requests
+Required-by: langchain-openai
+
+#+begin_src jupyter-python :results none
+  from langchain_openai import ChatOpenAI
+
+  model = ChatOpenAI(model="gpt-3.5-turbo-0125", base_url='https://api.xty.app/v1')
+#+end_src
+
+#+begin_src jupyter-python
+  # 导入 LangChain 库的不同模块，包括向量存储、输出解析器、提示模板、并行运行器和 OpenAI 的嵌入模型
+  from langchain_community.vectorstores import DocArrayInMemorySearch
+  from langchain_core.output_parsers import StrOutputParser
+  from langchain_core.prompts import ChatPromptTemplate
+  from langchain_core.runnables import RunnableParallel, RunnablePassthrough
+  from langchain_openai import OpenAIEmbeddings
+
+  # 使用 DocArrayInMemorySearch 创建一个内存中的向量存储
+  # 使用 OpenAIEmbeddings 为文本生成嵌入向量，文本为 "harrison worked at kensho" 和 "bears like to eat honey"
+  vectorstore = DocArrayInMemorySearch.from_texts(
+      ["harrison worked at kensho", "bears like to eat honey"],
+      embedding=OpenAIEmbeddings(base_url='https://api.xty.app/v1'),
+  )
+
+  # 将向量存储转换为检索器
+  retriever = vectorstore.as_retriever()
+
+  # 创建一个聊天提示模板，用中文设置模板以便生成基于特定上下文和问题的完整输入
+  template = """根据以下上下文回答问题:
+  {context}
+
+  问题: {question}
+  """
+  prompt = ChatPromptTemplate.from_template(template)
+
+  # 初始化输出解析器，将模型输出转换为字符串
+  output_parser = StrOutputParser()
+
+  # 设置一个并行运行器，用于同时处理上下文检索和问题传递
+  # 使用RunnableParallel来准备预期的输入，通过使用检索到的文档条目以及原始用户问题，
+  # 利用文档搜索器 retriever 进行文档搜索，并使用 RunnablePassthrough 来传递用户的问题。
+  setup_and_retrieval = RunnableParallel(
+      {"context": retriever, "question": RunnablePassthrough()}
+  )
+
+  # 构建一个处理链，包括上下文和问题的设置、提示生成、模型调用和输出解析
+  chain = setup_and_retrieval | prompt | model | output_parser
+
+  # 调用处理链，传入问题"where did harrison work?"（需翻译为中文），并基于给定的文本上下文生成答案
+  chain.invoke("harrison在哪里工作？")
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+: /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages/pydantic/_migration.py:283: UserWarning: `pydantic.error_wrappers:ValidationError` has been moved to `pydantic:ValidationError`.
+:   warnings.warn(f'`{import_path}` has been moved to `{new_location}`.')
+: Harrison在Kensho工作。
+:END:

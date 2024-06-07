@@ -1,0 +1,62 @@
+#+TITLE: LangChain 核心模块 - Flask
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-Translator02-flask :display text/plain
+
+#+begin_src jupyter-python
+  pip install requests
+#+end_src
+
+#+RESULTS:
+: Requirement already satisfied: requests in /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages (2.31.0)
+: Requirement already satisfied: charset-normalizer<4,>=2 in /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages (from requests) (3.3.2)
+: Requirement already satisfied: idna<4,>=2.5 in /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages (from requests) (3.7)
+: Requirement already satisfied: urllib3<3,>=1.21.1 in /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages (from requests) (2.2.1)
+: Requirement already satisfied: certifi>=2017.4.17 in /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages (from requests) (2024.2.2)
+: Note: you may need to restart the kernel to use updated packages.
+
+* 使用 requests 库请求翻译服务 API
+
+#+begin_src jupyter-python
+  import requests
+
+  # Flask服务器的地址
+  FLASK_SERVER_URL = 'http://localhost:5000'
+
+  # 翻译服务接口
+  translation_url = f'{FLASK_SERVER_URL}/translation'
+
+  # 要上传的文件路径
+  file_path = '../tests/test.pdf'  # 修改为你的文件路径
+
+  # 构建请求参数
+  params = {
+      'source_language': 'English',  # 修改为你的源语言
+      'target_language': 'Chinese'   # 修改为你的目标语言
+  }
+
+  # 发送POST请求
+  with open(file_path, 'rb') as file:
+      files = {'input_file': file}
+      response = requests.post(translation_url, files=files, data=params)
+
+
+  # 翻译后文件
+  output_filename = "translated_output.md"
+
+  # 处理响应
+  if response.status_code == 200:
+      # 保存翻译后的文件
+      with open(output_filename, 'wb') as output_file:
+          output_file.write(response.content)
+      print(f"Translation completed. Translated file saved as {output_filename}.")
+  else:
+      print(f"Translation failed. Status code: {response.status_code}")
+      print(response.text)
+#+end_src
+
+#+begin_example
+Translation completed. Translated file saved as translated_output.md.
+#+end_example
+
+#+begin_src jupyter-python
+#+end_src

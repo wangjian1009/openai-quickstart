@@ -1,0 +1,109 @@
+#+TITLE: Langchain Expression Language（LCEL）Multiple Chain 快速入门
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-LangChain-LCEL-quickstart :display text/plain
+
+* Multiple Chain 快速入门
+Runnables 可以轻松地用来串联多个 Chains，使用 RunnablePassthrough 将输出同时传给多条后继链。
+
+#+begin_example
+     Input
+      / \
+     /   \
+ Chain1 Chain2
+     \   /
+      \ /
+      Combine
+#+end_example
+
+本指南展示如何使用 Runnable 实现多个 AI 关于相同话题的辩论：
+
+#+begin_example
+    输入话题
+       |
+       |
+    原始观点
+      / \
+     /   \
+ 正面论述 反面论述
+     \   /
+      \ /
+     最终总结
+#+end_example
+
+#+begin_src jupyter-python results: none
+  # 导入相关模块，包括运算符、输出解析器、聊天模板、ChatOpenAI 和 运行器
+  from operator import itemgetter
+  from langchain_core.output_parsers import StrOutputParser
+  from langchain_core.prompts import ChatPromptTemplate
+  from langchain_openai import ChatOpenAI
+  from langchain_core.runnables import RunnablePassthrough
+
+  # 创建一个计划器，生成一个关于给定输入的论证
+  planner = (
+      ChatPromptTemplate.from_template("生成关于以下内容的论点: {input}")
+      | ChatOpenAI(base_url='https://api.xty.app/v1')
+      | StrOutputParser()
+      | {"base_response": RunnablePassthrough()}
+  )
+
+  # 创建正面论证的处理链，列出关于基础回应的正面或有利的方面
+  arguments_for = (
+      ChatPromptTemplate.from_template(
+          "列出关于{base_response}的正面或有利的方面"
+      )
+      | ChatOpenAI(base_url='https://api.xty.app/v1')
+      | StrOutputParser()
+  )
+
+  # 创建反面论证的处理链，列出关于基础回应的反面或不利的方面
+  arguments_against = (
+      ChatPromptTemplate.from_template(
+          "列出关于{base_response}的反面或不利的方面"
+      )
+      | ChatOpenAI(base_url='https://api.xty.app/v1')
+      | StrOutputParser()
+  )
+
+  # 创建最终响应者，综合原始回应和正反论点生成最终的回应
+  final_responder = (
+      ChatPromptTemplate.from_messages(
+          [
+              ("ai", "{original_response}"),
+              ("human", "正面观点:\n{results_1}\n\n反面观点:\n{results_2}"),
+              ("system", "给出批评后生成最终回应"),
+          ]
+      )
+      | ChatOpenAI(base_url='https://api.xty.app/v1')
+      | StrOutputParser()
+  )
+
+  # 构建完整的处理链，从生成论点到列出正反论点，再到生成最终回应
+  chain = (
+      planner
+      | {
+          "results_1": arguments_for,
+          "results_2": arguments_against,
+          "original_response": itemgetter("base_response"),
+      }
+      | final_responder
+  )
+#+end_src
+
+#+begin_src jupyter-python
+  chain.invoke({"input": "房地产低迷"})
+#+end_src
+
+#+RESULTS:
+: 房地产市场低迷所带来的积极和消极影响确实是一个复杂而多维的问题。虽然存在一些积极因素，例如购房机会增加和建筑成本的下降，但我们不能忽视可能出现的负面影响，如失业率上升和资产负债表问题。\n\n面对房地产市场的低迷，我们需要综合考虑各种因素，并采取综合性的措施来应对可能出现的问题。政府可以通过实施适当的政策来刺激市场活动，同时加强监管，以确保市场的健康和稳定。此外，行业各方也应该积极应对，寻找创新的解决方案，以应对挑战并促进经济的可持续发展。
+
+*** 流式输出
+#+begin_src jupyter-python
+  ## chain 最终输出经过了 StrOutputParser 处理，所以可以直接输出流式输出 s
+  for s in chain.stream({"input": "全球经济"}):
+      print(s, end="", flush=True)
+#+end_src
+
+#+RESULTS:
+: 这些观点对全球经济的多维度性提供了深刻的理解，我们应该认识到全球经济发展既有积极的一面，也有挑战和不利因素。对于贸易保护主义、金融风险、人口老龄化等问题，我们需要国际社会共同努力，采取合作和协调的措施来解决。同时，科技创新、可持续发展等领域的进展为我们提供了应对挑战的新机遇。因此，我们需要以开放的心态和合作的精神，共同推动全球经济朝着更加包容、可持续和稳定的方向发展。
+
+** Homework: 实现一个多链版本的代码生成，输入功能需求，输出2种（Python，Java）以上编程语言的代码实现。
