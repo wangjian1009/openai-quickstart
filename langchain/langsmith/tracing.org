@@ -1,0 +1,338 @@
+#+TITLE: LangSmith Tracing 快速入门
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-LangSmith-tracing :display text/plain
+
+为了使用追踪（Tracing）功能，必须将 =LANGCHAIN_TRACING_V2= 环境变量设置为 =true= ，以便在使用 @traceable 或 traceable 时将跟踪日志记录到LangSmith。
+使得开发者可以在不更改代码的情况下切换跟踪开关。
+
+此外，还需要将 =LANGCHAIN_API_KEY= 环境变量设置好（注册和创建=API_KEY=官方文档链接：[[https://docs.smith.langchain.com/]]）
+
+* 追踪记录方法
+本教程将展示多种使用 LangSmith 来记录追踪 LLM 生成内容和性能的方法：
+
+- 使用 =@traceable= 装饰器追踪特定 Python 函数
+- 使用 =wrap_openai= 方法自动追踪 OpenAI 客户端所有调用
+- 使用 =RunTree= API
+- 使用 =trace= 上下文管理
+- 结合 =LangChain= 来追踪记录
+
+* 记录到特定项目
+追踪日志默认会记录在 =default= 项目中，如果想要记录在其他项目，需要在 LangSmith 平台新建项目。然后使用以下方式：
+
+- 使用环境变量全量修改： ~export LANGCHAIN_PROJECT=my-custom-project~
+- 动态修改单条记录： ~@traceable(project_name="my-custom-project")~
+
+* @traceable 装饰器
+
+#+begin_src jupyter-python
+  from langsmith import traceable
+  from openai import Client
+
+  # 创建 OpenAI 客户端
+  openai = Client()
+
+  # 标记函数可追踪
+  @traceable
+  def format_prompt(subject):
+      # 格式化提示信息
+      return [
+          {
+              "role": "system",
+              "content": "你是一个乐于助人的助手。",
+          },
+          {
+              "role": "user",
+              "content": f"对于一家卖{subject}的店来说，取个什么名字好呢？"
+          }
+      ]
+
+  # 标记函数可追踪，并指定运行类型为 LLM
+  @traceable(run_type="llm")
+  def invoke_llm(messages):
+      # 调用 OpenAI 的聊天模型
+      return openai.chat.completions.create(
+          messages=messages, model="gpt-3.5-turbo", temperature=0
+      )
+
+  # 标记函数可追踪
+  @traceable
+  def parse_output(response):
+      # 解析并返回模型的输出
+      return response.choices[0].message.content
+
+  # 标记函数可追踪
+  @traceable
+  def run_pipeline(prompt):
+      # 运行整个管道流程
+      messages = for mat_prompt(prompt)  # 创建提示信息
+      response = invoke_llm(messages)  # 调用模型
+      return parse_output(response)  # 解析模型输出
+#+end_src
+
+#+begin_src jupyter-python
+run_pipeline("烤鸭")
+#+end_src
+
+#+RESULTS:
+: '为一家卖烤鸭的店取名字时，可以考虑以下一些建议：\n\n1. 金陵烤鸭坊\n2. 鸭香阁\n3. 鸭乐园\n4. 鸭舫\n5. 鸭悦坊\n6. 鸭乐食府\n7. 鸭香居\n8. 鸭乐轩\n9. 鸭乐园\n10. 鸭乐坊\n\n希望这些建议能够帮助你取一个好听且有吸引力的店名！'
+#+begin_src jupyter-python
+run_pipeline("驴肉火烧")
+#+end_src
+
+#+RESULTS:
+: '为一家卖驴肉火烧的店取名可以考虑以下几个方向：\n1. 与驴肉相关的名字：比如“驴肉香坊”、“驴肉乡村”等。\n2. 引人入胃的名字：比如“香味驴肉坊”、“美味驴肉馆”等。\n3. 独特创意的名字：比如“驴肉烧烤屋”、“驴肉烧的香”等。\n\n希望以上建议能够帮助你取一个好听的店名！'
+#+begin_src jupyter-python
+#+end_src
+
+* wrap_openai 客户端
+Python/TypeScript 中的 wrap_openai/wrapOpenAI 方法允许您包装 OpenAI
+客户端，以便自动记录跟踪 - 无需装饰器或函数包装！
+
+该包装器与 @traceable
+装饰器或可追溯函数完美配合，可以在同一应用程序中同时使用两者。
+
+#+begin_src jupyter-python
+import openai
+from langsmith import traceable
+from langsmith.wrappers import wrap_openai
+
+# 包装 OpenAI 客户端
+client = wrap_openai(openai.Client())
+
+# 标记函数可追踪，并指定运行类型为工具，名称为"Retrieve Context"
+@traceable(run_type="tool", name="Retrieve Context")
+def my_tool(question: str) -> str:
+    # 返回上下文信息
+    return "在今天早上的会议中，我们讨论了出海创业的机会与挑战。"
+
+# 标记函数可追踪，名称为"Chat Pipeline"
+@traceable(name="Chat Pipeline")
+def chat_pipeline(question: str):
+    # 获取上下文信息
+    context = my_tool(question)
+    
+    # 创建消息列表，包含系统消息和用户消息
+    messages = [
+        { "role": "system", "content": "你是一个乐于助人的助手。请仅根据给定的上下文回复用户的请求。" },
+        { "role": "user", "content": f"问题：{question}\n上下文：{context}"}
+    ]
+    
+    # 调用聊天模型生成回复
+    chat_completion = client.chat.completions.create(
+        model="gpt-3.5-turbo", messages=messages
+    )
+    
+    # 返回模型的回复内容
+    return chat_completion.choices[0].message.content
+#+end_src
+
+#+begin_src jupyter-python
+# 调用 chat_pipeline 函数
+chat_pipeline("你能总结一下今天早上的会议吗？")
+#+end_src
+
+#+RESULTS:
+: '当然！在今天早上的会议中，我们主要讨论了出海创业的机会与挑战。'
+#+begin_src jupyter-python
+#+end_src
+
+#+begin_src jupyter-python
+#+end_src
+
+* RunTree API
+通过 RunTree API，是跟踪日志记录到 LangSmith 的另一种更直接的方式。
+
+该API允许对跟踪进行更多控制：可以手动创建运行和子运行以组装您的跟踪。
+
+您仍然需要设置LANGCHAIN_API_KEY，但对于*此方法不需要LANGCHAIN_TRACING_V2*。
+
+#+begin_src jupyter-python
+import openai
+from langsmith.run_trees import RunTree
+
+# 用户输入的问题
+question = "你能总结一下今天早上的会议吗？"
+
+# 创建一个顶层的运行节点
+pipeline = RunTree(
+    name="Chat Pipeline",
+    run_type="chain",
+    inputs={"question": question}
+)
+
+# 在检索步骤中获取的上下文信息
+context = "在今天早上的会议中，我们回顾了改革开放的重大成果。"
+
+# 创建消息列表，包含系统消息和用户消息
+messages = [
+    { "role": "system", "content": "你是一个乐于助人的助手。请仅根据给定的上下文回复用户的请求。" },
+    { "role": "user", "content": f"问题：{question}\n上下文：{context}"}
+]
+
+# 创建一个子运行节点
+child_llm_run = pipeline.create_child(
+    name="OpenAI Call",
+    run_type="llm",
+    inputs={"messages": messages},
+)
+
+# 生成回复
+client = openai.Client()
+chat_completion = client.chat.completions.create(
+    model="gpt-3.5-turbo", messages=messages
+)
+
+# 结束子运行节点并记录输出
+child_llm_run.end(outputs=chat_completion)
+child_llm_run.post()
+
+# 结束顶层运行节点并记录输出
+pipeline.end(outputs={"answer": chat_completion.choices[0].message.content})
+pipeline.post()
+#+end_src
+
+#+begin_src jupyter-python
+#+end_src
+
+#+begin_src jupyter-python
+#+end_src
+
+* trace 上下文管理器
+在Python中，使用trace上下文管理器跟踪日志记录到LangSmith。在以下情况下非常有用：
+
+- 想要为特定代码块记录跟踪日志，而不设置一个会为整个应用程序记录跟踪的环境变量。
+- 希望对跟踪的输入、输出和其他属性进行控制。
+- 使用装饰器或包装器并不可行。
+
+该上下文管理器与可追溯的装饰器和 =wrap_openai=
+包装器无缝集成，因此，可以在同一应用程序中同时使用它们。
+
+#+begin_src jupyter-python
+import openai
+from langsmith import trace
+from langsmith import traceable
+from langsmith.wrappers import wrap_openai
+
+# 包装 OpenAI 客户端
+client = wrap_openai(openai.Client())
+
+# 标记函数可追踪，并指定运行类型为工具，名称为"Retrieve Context"
+@traceable(run_type="tool", name="Retrieve Context")
+def my_tool(question: str) -> str:
+    # 返回上下文信息
+    return "During this morning's meeting, we solved all world conflict."
+
+def chat_pipeline(question: str):
+    # 获取上下文信息
+    context = my_tool(question)
+    
+    # 创建消息列表，包含系统消息和用户消息
+    messages = [
+        { "role": "system", "content": "你是一个乐于助人的助手。请仅根据给定的上下文回复用户的请求。" },
+        { "role": "user", "content": f"问题：{question}\n上下文：{context}"}
+    ]
+    
+    # 调用聊天模型生成回复
+    chat_completion = client.chat.completions.create(
+        model="gpt-3.5-turbo", messages=messages
+    )
+    
+    # 返回模型的回复内容
+    return chat_completion.choices[0].message.content
+
+# 应用输入
+app_inputs = {"input": "Can you summarize this morning's meetings?"}
+
+# 跟踪聊天管道运行
+with trace("Chat Pipeline", "chain", project_name="my_test", inputs=app_inputs) as rt:
+    output = chat_pipeline("Can you summarize this morning's meetings?")
+    rt.end(outputs={"output": output})
+#+end_src
+
+#+begin_src jupyter-python
+#+end_src
+
+* 记录多模态模型 GPT-4
+
+#+begin_src jupyter-python
+from openai import OpenAI
+from langsmith.wrappers import wrap_openai
+
+# 包装 OpenAI 客户端
+client = wrap_openai(OpenAI())
+
+# 调用聊天模型生成回复
+response = client.chat.completions.create(
+  model="gpt-4-turbo",
+  messages=[
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "介绍下这幅图讲的什么？"},
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://p6.itc.cn/q_70/images03/20200602/0c267a0d3d814c9783659eb956969ba1.jpeg",
+          },
+        },
+      ],
+    }
+  ],
+)
+#+end_src
+
+#+begin_src jupyter-python
+# 打印回复的内容
+print(response.choices[0].message.content)
+#+end_src
+
+#+begin_example
+这幅图是一种幽默搞笑的对比图。左侧展示的是一只形如肌肉男的柴犬，被称为“16岁的我”，右侧则是一只普通的柴犬，被称为“工作后的我”。图片通过夸张的肌肉和普通的狗的形态来幽默地表达了人们对比自己年轻时充满活力和成年后工作压力导致身体和精神状态“变形”的感受。左边的大肌肉柴犬下方的文字翻译为“我可以一口气做一百个俯卧撑，一条跑足十公里，浴火重生的女人，人见人爱的大男孩”，而右边的普通柴犬下方的文字翻译为“好累啊 好想赖床 浑身疼痛 我没有病 你心有病 我命由我不由天 独步天下”。这些标签富含讽刺和幽默意味，反映了现代生活中劳累与压力的普遍现象。
+#+end_example
+
+#+begin_src jupyter-python
+#+end_src
+
+* 结合 LangChain 记录追踪
+设置好以下环境变量后，无需任何额外的代码即可追踪 LangChain 运行
+
+#+begin_src shell
+export LANGCHAIN_TRACING_V2=true
+export LANGCHAIN_API_KEY=<your-api-key>
+
+# The below examples use the OpenAI API, so you will need
+export OPENAI_API_KEY=<your-openai-api-key>
+#+end_src
+
+#+begin_src jupyter-python
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+# 从消息中创建聊天提示模板
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "你是一个乐于助人的助手。请参考给定的上下文回复用户的请求。"),
+    ("user", "问题：{question}\n上下文：{context}")
+])
+
+# 使用指定的模型
+model = ChatOpenAI(model="gpt-3.5-turbo")
+output_parser = StrOutputParser()
+
+# 将提示模板、模型和输出解析器链在一起
+chain = prompt | model | output_parser
+
+# 定义问题和上下文
+question = "孙悟空到底打过几次白骨精啊？"
+context = "其实孙悟空三打白骨精后，又打了她一次"
+#+end_src
+
+#+begin_src jupyter-python
+# 调用链条并传递输入
+chain.invoke({"question": question, "context": context})
+#+end_src
+
+#+RESULTS:
+: '孙悟空一共打过四次白骨精。'
+#+begin_src jupyter-python
+#+end_src

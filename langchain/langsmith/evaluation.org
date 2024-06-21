@@ -1,0 +1,244 @@
+#+TITLE: LangSmith Evaluation 快速入门
+#+STARTUP: showall hidestars indent inlineimages
+#+PROPERTY: header-args:jupyter-python :session 2024人工智能学习-LangSmith-evaluation :display text/plain
+
+概况来说，评估（Evaluation）过程分为以下步骤：
+
+- 定义 LLM 应用或目标任务(Target Task)。
+- 创建或选择一个数据集来评估 LLM 应用。您的评估标准可能需要数据集中的预期输出。
+- 配置评估器（Evaluator）对 LLM 应用的输出进行打分（通常与预期输出/数据标注进行比较）。
+- 运行评估并查看结果。
+
+本教程展示一个非常简单的 LLM 应用（分类器）的评估流程，该应用会将输入数据标记为“有毒（Toxic）”或“无毒（Not Toxic）”。
+
+#+begin_src jupyter-python
+  pip show langsmith
+#+end_src
+
+#+RESULTS:
+#+begin_example
+  Name: langsmith
+  Version: 0.1.59
+  Summary: Client library to connect to the LangSmith LLM Tracing and Evaluation Platform.
+  Home-page: https://smith.langchain.com/
+  Author: LangChain
+  Author-email: support@langchain.dev
+  License: MIT
+  Location: /Users/wangjian/.virtualenvs/jupyter/lib/python3.12/site-packages
+  Requires: orjson, pydantic, requests
+  Required-by: langchain, langchain-community, langchain-core
+  Note: you may need to restart the kernel to use updated packages.
+#+end_example
+
+* 1.定义目标任务
+我们定义了一个简单的评估目标，包括一个LLM Pipeline（将文本分类为有毒或无毒），并启用跟踪（Tracing）以捕获管道中每个步骤的输入和输出。
+
+#+begin_src jupyter-python :results none
+  from langsmith import traceable, wrappers
+  from openai import Client
+
+  # 包装 OpenAI 客户端
+  openai = wrappers.wrap_openai(Client())
+
+  # 标记函数可追踪
+  @traceable
+  def label_text(text):
+      # 创建消息列表，包含系统消息和用户消息
+      messages = [
+          {
+              "role": "system",
+              "content": "请查看下面的用户查询，判断其中是否包含任何形式的有害行为，例如侮辱、威胁或高度负面的评论。如果有，请回复'Toxic'，如果没有，请回复'Not toxic'。",
+          },
+          {"role": "user", "content": text},
+      ]
+      
+      # 调用聊天模型生成回复
+      result = openai.chat.completions.create(
+          messages=messages, model="gpt-3.5-turbo", temperature=0
+      )
+      
+      # 返回模型的回复内容
+      return result.choices[0].message.content
+#+end_src
+
+* 2.创建或选择评估数据集
+下面创建一个评估数据集（包含有毒和无毒文本的示例）。该数据集中每个示例都包含三个字典/对象：
+
+- outputs：数据集中找到的参考标签或其他上下文
+- inputs：管道的输入
+- metadata：示例中存储的任何其他元数据
+
+这些字典/对象可以具有任意键（Key）和值（Value），但是所有示例中键必须保持一致。
+
+示例中的值也可以采用任何形式，例如字符串、数字、列表或字典，但对于本教程的示例，我们仅使用字符串。
+
+#+begin_src jupyter-python
+  from langsmith import Client
+
+  # 创建客户端
+  client = Client()
+
+  # 创建一个数据集
+  examples = [
+      ("Shut up, idiot", "Toxic"),  # 有害
+      ("You're a wonderful person", "Not toxic"),  # 无害
+      ("This is the worst thing ever", "Toxic"),  # 有害
+      ("I had a great day today", "Not toxic"),  # 无害
+      ("Nobody likes you", "Toxic"),  # 有害
+      ("This is unacceptable. I want to speak to the manager.", "Not toxic"),  # 无害
+  ]
+
+  # 数据集名称
+  dataset_name = "Toxic Queries"  
+  dataset = client.create_dataset(dataset_name=dataset_name)
+
+  # 提取输入和输出
+  inputs, outputs = zip(
+      ,*[({"text": text}, {"label": label}) for text, label in examples]
+  )
+
+  # 创建示例并将其添加到数据集中
+  client.create_examples(inputs=inputs, outputs=outputs, dataset_id=dataset.id)
+#+end_src
+
+* 3.配置评估器
+创建一个评估器，将模型输出与数据集中的标注对比以进行评分。
+
+#+begin_src jupyter-python
+  from langsmith.schemas import Example, Run
+
+  # 定义函数用于校正标签
+  def correct_label(root_run: Run, example: Example) -> dict:
+      # 检查 root_run 的输出是否与 example 的输出标签相同
+      score = root_run.outputs.get("output") == example.outputs.get("label")
+      # 返回一个包含分数和键的字典
+      return {"score": int(score), "key": "correct_label"}
+#+end_src
+
+* 4.执行评估查看结果
+下面使用 =evaluate= 方法来运行评估，该方法接受以下参数：
+
+- 函数（function）：接受输入字典或对象并返回输出字典或对象
+- 数据（data): 要在其上进行评估的LangSmith数据集的名称或UUID，或者是示例的迭代器
+- 评估器（evaluators）: 用于对函数输出进行打分的评估器列表
+- 实验前缀（experiment_prefix）: 用于给实验名称添加前缀的字符串。如果未提供，则将自动生成一个名称。
+
+#+begin_src jupyter-python
+  from langsmith.evaluation import evaluate
+
+  # 数据集名称
+  dataset_name = "Toxic Queries"
+
+  # evaluator = StringEvaluator(evaluation_name="toxic_judge", grading_function=correct_label)
+
+  # 评估函数
+  results = evaluate(
+      # 使用 label_text 函数处理输入
+      lambda inputs: label_text(inputs["text"]),
+      data=dataset_name,  # 数据集名称
+      evaluators=[correct_label],  # 使用 correct_label 评估函数
+      experiment_prefix="Toxic Queries",  # 实验前缀名称
+      description="Testing the baseline system.",  # 可选描述信息
+  )
+#+end_src
+
+#+begin_example
+/home/ubuntu/miniconda3/envs/langchain/lib/python3.10/site-packages/tqdm/auto.py:21: TqdmWarning: IProgress not found. Please update jupyter and ipywidgets. See https://ipywidgets.readthedocs.io/en/stable/user_install.html
+  from .autonotebook import tqdm as notebook_tqdm
+#+end_example
+
+#+begin_example
+View the evaluation results for experiment: 'Toxic Queries-465b0ea2' at:
+https://smith.langchain.com/o/3d35c1a5-b729-4d18-b06d-db0f06a30bc1/datasets/e1df55ff-b66c-4bcf-b5fd-7c63a847136e/compare?selectedSessions=2900c5b7-9dd5-482a-ab79-32888be3d5b9
+
+
+#+end_example
+
+* 使用 LCEL 重写 RAG Bot
+#+begin_src jupyter-python
+  ### 索引部分
+
+  from bs4 import BeautifulSoup as Soup
+  from langchain_community.vectorstores import Chroma
+  from langchain_openai import OpenAIEmbeddings
+  from langchain_community.document_loaders.recursive_url_loader import RecursiveUrlLoader
+  from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+  # 加载文档
+  url = "https://python.langchain.com/v0.1/docs/expression_language/"
+  loader = RecursiveUrlLoader(
+      url=url, max_depth=20, extractor=lambda x: Soup(x, "html.parser").text
+  )
+  docs = loader.load()
+
+  # 分割文档为小块
+  text_splitter = RecursiveCharacterTextSplitter(chunk_size=4500, chunk_overlap=200)
+  splits = text_splitter.split_documents(docs)
+
+  # 嵌入并存储在 Chroma 中
+  vectorstore = Chroma.from_documents(documents=splits, embedding=OpenAIEmbeddings())
+
+  # 创建检索器
+  retriever = vectorstore.as_retriever()
+#+end_src
+
+#+begin_src jupyter-python
+  ### RAG 机器人部分
+
+  import openai
+  from langsmith import traceable
+  from langsmith.wrappers import wrap_openai
+
+  class RagBot:
+
+      def __init__(self, retriever, model: str = "gpt-4-0125-preview"):
+          self._retriever = retriever
+          # 包装客户端以监测 LLM
+          self._client = wrap_openai(openai.Client())
+          self._model = model
+
+      @traceable()
+      def retrieve_docs(self, question):
+          # 调用检索器获取相关文档
+          return self._retriever.invoke(question)
+
+      @traceable()
+      def invoke_llm(self, question, docs):
+          # 调用 LLM 生成回复
+          response = self._client.chat.completions.create(
+              model=self._model,
+              messages=[
+                  {
+                      "role": "system",
+                      "content": "你是一个乐于助人的 AI 编码助手，擅长 LCEL。使用以下文档生成简明的代码解决方案回答用户的问题。\n\n"
+                      f"## 文档\n\n{docs}",
+                  },
+                  {"role": "user", "content": question},
+              ],
+          )
+
+          # 评估器将期望 "answer" 和 "contexts"
+          return {
+              "answer": response.choices[0].message.content,
+              "contexts": [str(doc) for doc in docs],
+          }
+
+      @traceable()
+      def get_answer(self, question: str):
+          # 获取答案
+          docs = self.retrieve_docs(question)
+          return self.invoke_llm(question, docs)
+
+  # 创建 RagBot 实例
+  rag_bot = RagBot(retriever)
+#+end_src
+
+#+begin_src jupyter-python
+response = rag_bot.get_answer("How to build a RAG chain in LCEL?")
+response["answer"][:500]
+#+end_src
+
+#+RESULTS:
+: "To build a Retrieval-Augmented Generation (RAG) chain in LCEL, you would need to compose a chain that includes a retriever component to fetch relevant documents or data based on a query, and then pass that retrieved data to a generator model to produce a final output. In LCEL, this would typically involve using `Retriever` and `Generator` components, which you can easily piece together thanks to LCEL's composable nature.\n\nThe following example is a simplified step-by-step guide to building a bas"
+#+begin_src jupyter-python
+#+end_src
